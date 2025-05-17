@@ -74,8 +74,10 @@ def transcribe():
     # 生成唯一文件名，并保存到工作目录
     audio_uuid = str(uuid.uuid4())
     original_extension = os.path.splitext(uploaded_file.filename)[1]
-    # 保存到工作目录，Celery任务可以直接访问，任务完成后负责清理
-    persistent_temp_filename = os.path.join(os.getcwd(), f"transcribe_orig_{audio_uuid}{original_extension}")
+    # 保存到共享目录，确保Celery worker可以访问
+    shared_dir = os.path.join(os.getcwd(), 'shared_data')
+    os.makedirs(shared_dir, exist_ok=True)
+    persistent_temp_filename = os.path.join(shared_dir, f"transcribe_orig_{audio_uuid}{original_extension}")
     uploaded_file.save(persistent_temp_filename)
 
     # 获取原始文件时长

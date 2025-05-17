@@ -2,7 +2,9 @@ version: '3'
 
 services:
   tts-app:
-    image: zpfsmile/azure-speech-transcriber:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "9527:5000"
     environment:
@@ -11,20 +13,27 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./downloads:/app/downloads
+      - ./shared_data:/app/shared_data
     restart: unless-stopped
     depends_on:
       - redis
       - celery-worker
   
   celery-worker:
-    image: zpfsmile/azure-speech-transcriber:latest
-    command: celery -A celery_app worker --loglevel=info
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m celery -A celery_config.celery worker --loglevel=info
+    working_dir: /app
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - PYTHONPATH=/app
     volumes:
       - ./uploads:/app/uploads
       - ./downloads:/app/downloads
+      - ./shared_data:/app/shared_data
+      - .:/app/root_dir
     depends_on:
       - redis
     restart: unless-stopped
@@ -38,4 +47,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  redis-data: 
+  redis-data:
+  shared_data: 
