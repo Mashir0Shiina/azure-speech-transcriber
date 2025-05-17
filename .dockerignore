@@ -1,0 +1,52 @@
+# Git
+.git
+.gitignore
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Files
+*.log
+*.tmp
+.DS_Store
+
+# Directories
+.idea/
+.vscode/
+node_modules/
+test/
+tests/
+docs/
+
+# User uploaded content (should be volume mounted)
+uploads/
+downloads/ 
