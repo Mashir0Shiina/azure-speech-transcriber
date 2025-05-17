@@ -8,7 +8,7 @@
 
 选择以下任一方式快速部署您自己的实例：
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/EWPt7x?referralCode=I4qHr7)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/EWPt7x)
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Mashir0Shiina/azure-speech-transcriber)
 
