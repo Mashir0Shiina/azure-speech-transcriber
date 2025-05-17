@@ -2,29 +2,27 @@ version: '3'
 
 services:
   tts-app:
-    image: zpfsmile/azure-speech-transcriber:latest
+    build: .
     ports:
-      - "9527:5000"
+      - "8080:5000"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     volumes:
-      - ./uploads:/app/uploads
-      - ./downloads:/app/downloads
+      - ./app:/app
     restart: unless-stopped
     depends_on:
       - redis
       - celery-worker
   
   celery-worker:
-    image: zpfsmile/azure-speech-transcriber:latest
-    command: celery -A celery_app worker --loglevel=info
+    build: .
+    command: bash -c "cd /app && celery -A celery_config worker --loglevel=info"
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     volumes:
-      - ./uploads:/app/uploads
-      - ./downloads:/app/downloads
+      - ./app:/app
     depends_on:
       - redis
     restart: unless-stopped
