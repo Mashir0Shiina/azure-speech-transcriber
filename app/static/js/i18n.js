@@ -365,9 +365,11 @@ function updateLanguageOptions() {
   if (languageSelect) {
     Array.from(languageSelect.options).forEach(option => {
       const langCode = option.value;
-      const langNameKey = 'lang-' + langCode;
-      const localizedName = getTranslation(langNameKey);
-      option.textContent = `${langCode} (${localizedName})`;
+      if (langCode) {
+        const langNameKey = 'lang-' + langCode;
+        const localizedName = getTranslation(langNameKey);
+        option.textContent = `${langCode} (${localizedName})`;
+      }
     });
   }
 }

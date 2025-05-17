@@ -490,6 +490,11 @@
                                  taskListEl.children[0].classList.contains('text-muted'))) {
                                 loadTasksFromApi();
                             }
+
+                            // 强制更新识别语言下拉菜单
+                            if (window.i18n && window.i18n.updateLanguageOptions) {
+                                window.i18n.updateLanguageOptions();
+                            }
                         });
                     });
                     
