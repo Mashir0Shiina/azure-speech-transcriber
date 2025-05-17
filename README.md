@@ -4,6 +4,7 @@
 
 由Cursor+Claude-3.7-sonnet+gemini-2.5-pro完成开发
 
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Mashir0Shiina/azure-speech-transcriber)
 
 ## 功能
 
@@ -14,15 +15,26 @@
 - 简洁美观的用户界面
 - 结果可一键复制
 - 任务进度跟踪和历史记录
+- **多语言界面支持（中文、英语、日语）**
 
 ## 部署步骤
 
-### 准备工作
+### Heroku一键部署
+
+1. 点击上方的"Deploy to Heroku"按钮
+2. 登录您的Heroku账户
+3. 填写应用名称和必要的环境变量（如REDIS_URL）
+4. 点击"Deploy app"按钮
+5. 部署完成后，您需要在应用的设置中配置Azure API密钥（通过应用界面的设置菜单）
+
+### 本地Docker部署
+
+#### 准备工作
 
 1. 注册Azure账号并创建语音服务资源，获取API密钥和区域信息
 2. 确保已安装Docker和Docker Compose
 
-### 配置
+#### 配置
 
 1. 复制环境变量示例文件并填写Azure密钥：
 
