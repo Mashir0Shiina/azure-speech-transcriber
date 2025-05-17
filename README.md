@@ -8,9 +8,7 @@
 
 选择以下任一方式快速部署您自己的实例：
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/SuRWvG?referralCode=CH7JmH)
-
-[![Deploy to Fly.io](https://fly.io/static/images/deploy-to-fly-button.svg)](https://fly.io/launch/github/Mashir0Shiina/azure-speech-transcriber)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/EWPt7x?referralCode=I4qHr7)
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Mashir0Shiina/azure-speech-transcriber)
 
@@ -26,16 +24,6 @@
 - **多语言界面支持（中文、英语、日语）**
 
 ## 部署步骤
-
-### Fly.io 部署 (免费)
-
-1. 安装 [flyctl CLI](https://fly.io/docs/hands-on/install-flyctl/)
-2. 在终端运行 `flyctl auth login` 并登录
-3. 克隆此仓库并进入目录
-4. 运行 `flyctl launch`，创建应用（首次免费）
-5. 添加Redis: `flyctl redis create`
-6. 关联Redis: `flyctl redis attach --redis-app <your-redis-app-name>`
-7. 部署应用: `flyctl deploy`
 
 ### Railway.app 部署 (有免费额度)
 

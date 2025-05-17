@@ -1,4 +1,0 @@
-app: azure-speech-transcriber
-config:
-  REDIS_URL: redis://redis_host:6379
-  PYTHONPATH: /app 
