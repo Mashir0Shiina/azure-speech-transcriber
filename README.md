@@ -4,12 +4,6 @@
 
 由Cursor+Claude-3.7-sonnet+gemini-2.5-pro完成开发
 
-## 一键部署
-
-通过Railway快速部署您自己的实例：
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
-
 ## 功能
 
 - 支持麦克风实时录音识别
@@ -22,14 +16,6 @@
 - **多语言界面支持（中文、英语、日语）**
 
 ## 部署步骤
-
-### Railway 部署 (有免费额度)
-
-1. 点击上方的"Deploy on Railway"按钮
-2. 登录您的Railway账户 
-3. 选择从GitHub导入，选择此仓库
-4. 添加Redis服务：New -> Add Database -> Redis
-5. 部署完成后，您需要在应用的设置中配置Azure API密钥（通过应用界面的设置菜单）
 
 ### 本地Docker部署
 
@@ -133,4 +119,4 @@ docker-compose down
 - 视频处理：FFmpeg
 - 前端：HTML/CSS/JavaScript, Bootstrap 5
 - 任务队列：Celery + Redis
-- 容器化：Docker, Docker Compose 
+- 容器化：Docker, Docker Compose
