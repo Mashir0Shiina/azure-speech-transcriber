@@ -604,7 +604,7 @@
                 function handleFileUpload() {
                     if (!audioFileEl.files.length) return;
                     const file = audioFileEl.files[0];
-                    resultEl.textContent = '检查文件格式...';
+                    resultEl.textContent = window.i18n ? window.i18n.get('checking-format') : '检查文件格式...';
                     detailsContainer.style.display = 'block'; // Show details area
                     taskInfoBox.style.display = 'none'; // Hide previous task info
 
@@ -631,7 +631,7 @@
                         })
                         .catch(error => {
                             console.error('文件格式检查失败:', error);
-                            showErrorInResultBox('检查文件格式时出错');
+                            showErrorInResultBox(window.i18n ? window.i18n.get('error') + ': ' + error : '检查文件格式时出错');
                         });
                 }
 
@@ -639,19 +639,31 @@
                     // Clear previous conversion interval if any
                     if (conversionStatusInterval) clearInterval(conversionStatusInterval);
 
+                    // 使用多语言文本
+                    const isVideo = checkData.is_video;
+                    const modalTitle = window.i18n ? window.i18n.get('file-needs-conversion') : '文件需要转换';
+                    const fileTypeText = isVideo ? 
+                        (window.i18n ? window.i18n.get('video-detected') : '检测到您上传的是视频文件，需要提取音频才能进行识别。') : 
+                        (window.i18n ? window.i18n.get('audio-conversion-needed') : '检测到您上传的是音频文件，需要转换格式才能进行识别。');
+                    const fileNameText = window.i18n ? window.i18n.get('file-name', fileName) : `文件名: ${fileName}`;
+                    const preparingText = window.i18n ? window.i18n.get('preparing-conversion') : '准备转换...';
+                    const startConversionText = window.i18n ? window.i18n.get('starting-conversion') : '开始转换';
+                    const cancelText = window.i18n ? window.i18n.get('cancel') : '取消';
+                    const useConvertedFileText = window.i18n ? window.i18n.get('use-converted-file') : '使用转换后的文件';
+                    
                     let modalHTML = `
                         <div class="modal fade" id="conversionModal" tabindex="-1" aria-labelledby="conversionModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="conversionModalLabel">文件需要转换</h5>
+                                        <h5 class="modal-title" id="conversionModalLabel">${modalTitle}</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <p>检测到您上传的是 <strong>${checkData.is_video ? '视频' : '音频'}</strong> 文件，需要${checkData.is_video ? '提取音频' : '转换格式'}才能进行识别。</p>
-                                        <p>文件名: <strong>${fileName}</strong></p>
+                                        <p>${fileTypeText}</p>
+                                        <p>${fileNameText}</p>
                                         <div id="conversionProgressUI" style="display: none;">
-                                            <p id="conversionMessageEl">准备转换...</p>
+                                            <p id="conversionMessageEl">${preparingText}</p>
                                             <div class="progress mb-3">
                                                 <div id="conversionProgressBarEl" class="progress-bar progress-bar-striped progress-bar-animated" 
                                                      role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
@@ -660,9 +672,9 @@
                                         <div id="conversionErrorEl" class="alert alert-danger" style="display: none;"></div>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelConversionBtn">取消</button>
-                                        <button type="button" class="btn btn-primary" id="startConversionBtnModal">开始转换</button>
-                                        <button type="button" class="btn btn-success" id="completeConversionBtnModal" style="display: none;">使用转换后的文件</button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelConversionBtn">${cancelText}</button>
+                                        <button type="button" class="btn btn-primary" id="startConversionBtnModal">${startConversionText}</button>
+                                        <button type="button" class="btn btn-success" id="completeConversionBtnModal" style="display: none;">${useConvertedFileText}</button>
                                     </div>
                                 </div>
                             </div>
@@ -700,7 +712,8 @@
                             })
                             .catch(err => {
                                 console.error('启动转换失败:', err);
-                                errorMsgEl.textContent = '启动转换失败，请重试';
+                                const errorText = window.i18n ? window.i18n.get('conversion-error') : '启动转换失败，请重试';
+                                errorMsgEl.textContent = errorText;
                                 errorMsgEl.style.display = 'block';
                                 startBtn.disabled = false;
                             });
@@ -710,7 +723,7 @@
                         const userApiKey = localStorage.getItem('azureSpeechApiKey');
                         const userApiRegion = localStorage.getItem('azureSpeechApiRegion');
                         if (!userApiKey || !userApiRegion) {
-                            alert('请先在设置中配置Azure API密钥和区域。');
+                            alert(window.i18n ? window.i18n.get('api-key-region-empty') : '请先在设置中配置Azure API密钥和区域。');
                             conversionModal.hide();
                             settingsModalInstance.show();
                             detailsContainer.style.display = 'block';
@@ -811,8 +824,7 @@
                 }
                 
                 function uploadAudio(formData, fileName, fileType) {
-                    // This function is now for files that DO NOT need conversion OR for microphone audio
-                    resultEl.textContent = '上传中...';
+                    resultEl.textContent = window.i18n ? window.i18n.get('uploading') : '上传中...';
                     detailsContainer.style.display = 'block';
                     taskInfoBox.style.display = 'block';
 
@@ -820,9 +832,9 @@
                     const userApiKey = localStorage.getItem('azureSpeechApiKey');
                     const userApiRegion = localStorage.getItem('azureSpeechApiRegion');
                     if (!userApiKey || !userApiRegion) {
-                        alert('请先在设置中配置Azure API密钥和区域。');
+                        alert(window.i18n ? window.i18n.get('api-key-region-empty') : '请先在设置中配置Azure API密钥和区域。');
                         settingsModalInstance.show();
-                        resultEl.textContent = '错误：API设置未完成。';
+                        resultEl.textContent = window.i18n ? window.i18n.get('api-settings-incomplete') : '错误：API设置未完成。';
                         return;
                     }
                     
@@ -1043,12 +1055,23 @@
                 function showTaskProcessing(taskId, fileName, fileType, duration) {
                     detailsContainer.style.display = 'block';
                     taskInfoBox.style.display = 'block';
-                    taskStatusEl.textContent = '处理中...';
-                    taskIdDisplayEl.textContent = `任务ID: ${taskId}`;
-                    fileInfoDisplayEl.innerHTML = `文件: ${fileName} (${formatDuration(duration)}) <span class="badge bg-secondary file-type-badge">${fileType === 'video' ? '视频' : '音频'}</span>`;
+                    taskStatusEl.textContent = window.i18n ? window.i18n.get('processing') : '处理中...';
+                    taskIdDisplayEl.textContent = `${window.i18n ? window.i18n.get('task-id') : '任务ID'}: ${taskId}`;
+                    
+                    const fileTypeText = fileType === 'video' ? 
+                        (window.i18n ? window.i18n.get('video') : '视频') : 
+                        (window.i18n ? window.i18n.get('audio') : '音频');
+                    
+                    fileInfoDisplayEl.innerHTML = `${window.i18n ? window.i18n.get('file') : '文件'}: ${fileName} (${formatDuration(duration)}) <span class="badge bg-secondary file-type-badge">${fileTypeText}</span>`;
                     progressBarEl.style.width = '0%';
                     progressBarEl.setAttribute('aria-valuenow', 0);
-                    resultEl.textContent = (fileType === 'video' ? '视频处理中，正在提取音频...' : '音频处理中...') + '请耐心等待。';
+                    
+                    const processingText = fileType === 'video' ? 
+                        (window.i18n ? window.i18n.get('video-processing') : '视频处理中，正在提取音频...') : 
+                        (window.i18n ? window.i18n.get('audio-processing') : '音频处理中...');
+                    
+                    const pleaseWaitText = window.i18n ? window.i18n.get('please-wait') : '请耐心等待。';
+                    resultEl.textContent = processingText + ' ' + pleaseWaitText;
                 }
 
                 function showTaskCompleted(resultText, fileName, fileType, duration) {
@@ -1064,7 +1087,7 @@
                     fileInfoDisplayEl.innerHTML = `${window.i18n ? window.i18n.get('file') : '文件'}: ${fileName} (${formatDuration(duration)}) <span class="badge bg-secondary file-type-badge">${fileTypeText}</span>`;
                     progressBarEl.style.width = '100%';
                     progressBarEl.setAttribute('aria-valuenow', 100);
-                    resultEl.textContent = resultText || "没有识别结果。";
+                    resultEl.textContent = resultText || (window.i18n ? window.i18n.get('no-recognition-result') : "没有识别结果。");
                 }
                 
                 function showErrorInTaskBox(errorMsg, fileName, fileType, duration) {
@@ -1147,7 +1170,7 @@
                 }
                 
                 function generateAndDownloadTxtFile(txtTaskId, fileName) {
-                    resultEl.textContent = "正在生成文本文件...";
+                    resultEl.textContent = window.i18n ? window.i18n.get('generating-txt') : "正在生成文本文件...";
                     fetch(`/api/generate-txt/${txtTaskId}`, { method: 'POST' })
                         .then(response => response.json())
                         .then(data => {
@@ -1158,14 +1181,14 @@
                                 document.body.appendChild(downloadLink);
                                 downloadLink.click();
                                 document.body.removeChild(downloadLink);
-                                resultEl.textContent = `已生成文本文件: ${data.filename}`;
+                                resultEl.textContent = window.i18n ? window.i18n.get('txt-generated', data.filename) : `已生成文本文件: ${data.filename}`;
                             } else {
-                                resultEl.textContent = `生成文本文件失败: ${data.error || '未知错误'}`;
+                                resultEl.textContent = window.i18n ? window.i18n.get('txt-generation-failed', data.error || '未知错误') : `生成文本文件失败: ${data.error || '未知错误'}`;
                             }
                         })
                         .catch(error => {
                             console.error('生成TXT请求失败:', error);
-                            resultEl.textContent = "生成TXT时出错";
+                            resultEl.textContent = window.i18n ? window.i18n.get('txt-generation-error') : "生成TXT时出错";
                         });
                 }
 
@@ -1189,7 +1212,7 @@
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
-                    showNotification('开始下载处理后的音频文件...', 'info');
+                    showNotification(window.i18n ? window.i18n.get('download-started') : '开始下载处理后的音频文件...', 'info');
                 }
 
                 function showDeleteConfirmation(delTaskId, fileName) {
@@ -1236,7 +1259,6 @@
                 }
 
                 function deleteTask(taskId, modalInstanceToClose) { // Added modalInstanceToClose parameter
-                    // Removed the if(confirm(...)) wrapper as confirmation is handled by the modal
                     try {
                         fetch(`/api/delete-task/${taskId}`, {
                             method: 'DELETE',
@@ -1253,16 +1275,16 @@
                         })
                         .then(data => {
                             if (data.status === 'success') {
-                                showNotification(data.message || "任务已删除。", "success");
+                                showNotification(data.message || (window.i18n ? window.i18n.get('task-deleted') : "任务已删除。"), "success");
                                 loadTasksFromApi();
                                 if (currentTaskId === taskId) hideTaskInfoBox();
                             } else {
-                                showNotification(data.message || "删除任务失败。", "danger");
+                                showNotification(data.message || (window.i18n ? window.i18n.get('task-delete-failed') : "删除任务失败。"), "danger");
                             }
                     })
                     .catch(error => {
                             console.error('删除任务时出错:', error);
-                            showNotification(error.message || "删除任务时发生网络错误或服务器错误。", "danger");
+                            showNotification(error.message || (window.i18n ? window.i18n.get('task-delete-network-error') : "删除任务时发生网络错误或服务器错误。"), "danger");
                         })
                         .finally(() => {
                             if (modalInstanceToClose) {
@@ -1271,7 +1293,7 @@
                         });
                     } catch (error) {
                         console.error('删除任务时发生意外错误:', error);
-                        showNotification("删除任务时发生意外错误。", "danger");
+                        showNotification(window.i18n ? window.i18n.get('task-delete-unexpected-error') : "删除任务时发生意外错误。", "danger");
                         if (modalInstanceToClose) {
                             modalInstanceToClose.hide(); // Also hide on unexpected sync error
                         }
@@ -1291,15 +1313,15 @@
                     const key = apiKeyModalEl.value.trim();
                     const region = apiRegionModalEl.value;
                     if (!key || !region) {
-                        showNotification('API密钥和区域不能为空。', 'warning');
+                        showNotification(window.i18n ? window.i18n.get('api-key-region-empty') : 'API密钥和区域不能为空。', 'warning');
                         return false;
                     }
                     if (key.includes(' ') || key.length < 10) {
-                        showNotification('API密钥格式不正确。', 'warning');
+                        showNotification(window.i18n ? window.i18n.get('api-key-format-incorrect') : 'API密钥格式不正确。', 'warning');
                         return false;
                     }
                      if (region.includes(' ') || !/^[a-z0-9-]+$/.test(region)) {
-                        showNotification('区域格式不正确。', 'warning');
+                        showNotification(window.i18n ? window.i18n.get('region-format-incorrect') : '区域格式不正确。', 'warning');
                         return false;
                     }
 
@@ -1308,11 +1330,10 @@
                     localStorage.setItem('parallelThreads', parallelThreadsModalEl.value);
                     localStorage.setItem('segmentLength', segmentLengthModalEl.value);
                     localStorage.setItem('selectedLanguage', languageModalEl.value);
-                    showNotification('设置已保存。');
+                    showNotification(window.i18n ? window.i18n.get('settings-saved') : '设置已保存。');
                     
                     if (settingsModalInstance) settingsModalInstance.hide();
                     
-                    // updateApiStatus(); // Not currently used
                     return true;
                 }
                 
@@ -1321,7 +1342,8 @@
                         if (settingsModalInstance) {
                              settingsModalInstance.show();
                              if (!document.getElementById('welcomeAlertModal')) { 
-                                const welcomeAlert = `<div id="welcomeAlertModal" class="alert alert-info alert-dismissible fade show">欢迎使用！请先在设置中配置您的Azure API密钥和区域。<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+                                const welcomeMessage = window.i18n ? window.i18n.get('welcome-message') : '欢迎使用！请先在设置中配置您的Azure API密钥和区域。';
+                                const welcomeAlert = `<div id="welcomeAlertModal" class="alert alert-info alert-dismissible fade show">${welcomeMessage}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
                                 settingsModalWelcomeAlertContainer.innerHTML = welcomeAlert;
                             }
                         } else {
@@ -1397,14 +1419,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            showNotification(data.message || "清理完成！", "success");
+                            showNotification(data.message || (window.i18n ? window.i18n.get('cleanup-complete') : "清理完成！"), "success");
                         } else {
-                            showNotification(data.message || "清理失败", "danger");
+                            showNotification(data.message || (window.i18n ? window.i18n.get('cleanup-failed') : "清理失败"), "danger");
                         }
                     })
                     .catch(error => {
                         console.error('清理文件失败:', error);
-                        showNotification("清理文件时发生错误。", "danger");
+                        showNotification(window.i18n ? window.i18n.get('cleanup-error') : "清理文件时发生错误。", "danger");
                     })
                     .finally(() => {
                         cleanFilesBtnModal.disabled = false;
