@@ -207,6 +207,42 @@
         }
         /* 隐藏原始上传按钮，用自定义按钮触发 */
         #audioFile { display: none; }
+
+        /* 日志区域样式 */
+        .log-box {
+            min-height: 150px;
+            max-height: 300px;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 0.5rem 1rem;
+            margin-top: 0.5rem;
+            background-color: #f8f9fa;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            border-bottom: 1px dashed #e9ecef;
+            padding-bottom: 5px;
+        }
+        .log-time {
+            color: #6c757d;
+            margin-right: 8px;
+        }
+        .log-info {
+            color: #0d6efd;
+        }
+        .log-warning {
+            color: #ffc107;
+        }
+        .log-error {
+            color: #dc3545;
+        }
+        .log-success {
+            color: #198754;
+        }
     </style>
 </head>
 <body>
@@ -230,7 +266,7 @@
             <button class="btn btn-outline-primary" id="importFileBtn" data-i18n="import-file">
                 <i class="fas fa-upload"></i> 导入文件
             </button>
-            <input type="file" id="audioFile" accept="audio/*,video/*">
+            <input type="file" id="audioFile" accept="audio/*,video/*" multiple>
             </div>
         <div class="top-bar-right">
             <div class="search-box">
@@ -305,6 +341,17 @@
             <div class="result-box" id="result" data-i18n="click-to-view">点击文件列表中的任务查看结果或进度</div>
         </div>
         
+        <!-- 新增日志区域 -->
+        <div class="mb-3">
+            <div class="d-flex justify-content-between">
+                <label class="form-label" data-i18n="log">处理日志</label>
+                <button id="clearLogBtn" class="btn btn-sm btn-outline-secondary mb-1"><i class="fas fa-eraser"></i> 清空日志</button>
+            </div>
+            <div class="log-box" id="logArea">
+                <div class="text-muted text-center">日志将在处理过程中显示...</div>
+            </div>
+        </div>
+
         <div class="text-center mt-4">
             <button id="copyBtn" class="btn btn-secondary me-2" data-i18n="copy-result">复制结果</button>
             <button id="clearBtn" class="btn btn-outline-danger" data-i18n="clear-result">清空结果区</button>
@@ -411,8 +458,7 @@
     <script src="/static/js/i18n.js"></script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOMContentLoaded event fired, script execution started.');
+        document.addEventListener('DOMContentLoaded', () => {
             try {
                 // --- DOM Element References ---
                 const importFileBtn = document.getElementById('importFileBtn');
@@ -422,6 +468,8 @@
                 const resultEl = document.getElementById('result');
                 const copyBtn = document.getElementById('copyBtn');
                 const clearBtn = document.getElementById('clearBtn');
+                const logAreaEl = document.getElementById('logArea');
+                const clearLogBtn = document.getElementById('clearLogBtn');
                 
                 const taskInfoBox = document.getElementById('taskInfo');
                 const taskStatusEl = document.getElementById('taskStatus');
@@ -464,6 +512,8 @@
                 let currentConversionId = null;
                 let conversionStatusInterval = null;
                 let settingsModalInstance = null; // For Bootstrap modal instance
+                let uploadQueue = [];
+                let isProcessingQueue = false;
 
                 // --- 初始化多语言 ---
                 if (window.i18n) {
@@ -544,6 +594,11 @@
                 }
                 loadSettings(); // Will now use Modal IDs
                 checkInitialApiSettings(); // Will now use Modal
+                
+                // 加载通用日志
+                loadGeneralLogs();
+                
+                // 加载任务列表
                 loadTasksFromApi();
 
                 // --- Event Listeners ---
@@ -581,6 +636,33 @@
                     }
                 });
                 dismissBtn.addEventListener('click', hideTaskInfoBox);
+                
+                // 添加清空日志按钮的事件监听器
+                if (clearLogBtn) {
+                    clearLogBtn.addEventListener('click', () => {
+                        if (logAreaEl) {
+                            // 清空显示
+                            logAreaEl.innerHTML = '<div class="text-muted text-center">日志已清空</div>';
+                            
+                            // 清空当前任务的日志
+                            if (currentTaskId) {
+                                // 通过API清除服务器上的日志
+                                fetch(`/api/logs/${currentTaskId}`, {
+                                    method: 'DELETE'
+                                }).catch(err => {
+                                    console.error('清除服务器日志失败:', err);
+                                });
+                            } else {
+                                // 清除通用日志
+                                fetch('/api/logs/general', {
+                                    method: 'DELETE'
+                                }).catch(err => {
+                                    console.error('清除服务器通用日志失败:', err);
+                                });
+                            }
+                        }
+                    });
+                }
 
                 // --- Core Functions ---
                 function debounce(func, delay) {
@@ -611,42 +693,255 @@
                         return "日期无效";
                     }
                 }
+
+                // 根据 epoch 秒数返回 HH:MM:SS
+                function formatTime(epochSeconds){
+                    try {
+                        const d=new Date(epochSeconds*1000);
+                        return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+                    }catch(e){return ''}
+                }
                 
                 function handleFileUpload() {
                     if (!audioFileEl.files.length) return;
-                    const file = audioFileEl.files[0];
-                    resultEl.textContent = window.i18n ? window.i18n.get('checking-format') : '检查文件格式...';
-                    detailsContainer.style.display = 'block'; // Show details area
-                    taskInfoBox.style.display = 'none'; // Hide previous task info
+                    
+                    // 将文件添加到上传队列
+                    uploadQueue = Array.from(audioFileEl.files);
+                    
+                    // 显示队列信息
+                    resultEl.textContent = `准备处理 ${uploadQueue.length} 个文件`;
+                    addLog(`发现 ${uploadQueue.length} 个文件待处理`, 'info');
+                    uploadQueue.forEach((file, index) => {
+                        addLog(`文件 ${index+1}: ${file.name} (${formatFileSize(file.size)})`, 'info');
+                    });
+                    
+                    detailsContainer.style.display = 'block';
+                    taskInfoBox.style.display = 'none';
+                    
+                    // 开始处理队列
+                    if (!isProcessingQueue) {
+                        processNextFileInQueue();
+                    }
+                }
 
+                // 添加文件大小格式化函数
+                function formatFileSize(bytes) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                }
+
+                function processNextFileInQueue() {
+                    // 如果队列为空或已经在处理中，则返回
+                    if (uploadQueue.length === 0 || isProcessingQueue) {
+                        if (uploadQueue.length === 0) {
+                            resultEl.textContent = '所有文件处理完成，请查看任务列表';
+                            addLog('所有文件处理完成', 'success');
+                            // 刷新任务列表以显示新添加的任务
+                            loadTasksFromApi();
+                        }
+                        return;
+                    }
+                    
+                    // 标记为处理中
+                    isProcessingQueue = true;
+                    
+                    // 获取队列中的第一个文件
+                    const file = uploadQueue.shift();
+                    resultEl.textContent = `处理文件: ${file.name} (剩余 ${uploadQueue.length} 个)`;
+                    addLog(`开始处理: ${file.name}`, 'info');
+                    
+                    // 准备表单数据
                     const formData = new FormData();
                     formData.append('file', file);
-
+                    
+                    // 执行文件格式检查
+                    addLog('检查文件格式...', 'info');
                     fetch('/api/upload-check', { method: 'POST', body: formData })
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {
+                                addLog(`文件格式检查失败: ${data.error}`, 'error');
                                 showErrorInResultBox(data.error);
+                                // 继续处理下一个文件
+                                isProcessingQueue = false;
+                                processNextFileInQueue();
                                 return;
                             }
-                            currentConversionId = data.conversion_id; // Store for potential conversion
+                            
+                            currentConversionId = data.conversion_id;
+                            const fileTypeText = data.is_video ? '视频' : '音频';
+                            addLog(`文件格式检查完成: ${fileTypeText}文件，时长: ${formatDuration(data.original_duration)}`, 'info');
+                            
                             if (data.needs_conversion) {
-                                showFileConversionDialog(data, file.name);
+                                // 对于需要转换的文件，自动开始转换过程
+                                resultEl.textContent = `正在转换文件: ${file.name}`;
+                                addLog(`文件需要转换${data.is_video ? '(提取音频)' : '(格式转换)'}`, 'info');
+                                
+                                // 自动开始转换
+                                addLog('开始转换...', 'info');
+                                fetch(`/api/convert-file/${currentConversionId}`, { method: 'POST' })
+                                    .then(response => response.json())
+                                    .then(convertData => {
+                                        if (convertData.error) {
+                                            addLog(`启动转换失败: ${convertData.error}`, 'error');
+                                            showErrorInResultBox(convertData.error);
+                                            isProcessingQueue = false;
+                                            processNextFileInQueue();
+                                            return;
+                                        }
+                                        
+                                        addLog('转换进程已启动', 'success');
+                                        
+                                        // 定期检查转换状态
+                                        const checkConversion = setInterval(() => {
+                                            fetch(`/api/conversion-status/${currentConversionId}`)
+                                                .then(response => response.json())
+                                                .then(statusData => {
+                                                    if (statusData.error) {
+                                                        clearInterval(checkConversion);
+                                                        addLog(`转换状态检查错误: ${statusData.error}`, 'error');
+                                                        showErrorInResultBox(`转换状态检查错误: ${statusData.error}`);
+                                                        isProcessingQueue = false;
+                                                        processNextFileInQueue();
+                                                        return;
+                                                    }
+                                                    
+                                                    // 更新转换进度
+                                                    resultEl.textContent = `文件转换中: ${file.name} - ${statusData.progress}%`;
+                                                    
+                                                    // 只在进度变化时添加日志
+                                                    if (statusData.progress % 10 === 0 || statusData.progress === 99) {
+                                                        addLog(`转换进度: ${statusData.progress}%`, 'info');
+                                                    }
+                                                    
+                                                    if (statusData.status === 'completed') {
+                                                        clearInterval(checkConversion);
+                                                        addLog('文件转换完成', 'success');
+                                                        // 转换完成，开始处理
+                                                        completeConversion(currentConversionId, file.name);
+                                                    } else if (statusData.status === 'failed') {
+                                                        clearInterval(checkConversion);
+                                                        addLog(`转换失败: ${statusData.message || '未知错误'}`, 'error');
+                                                        showErrorInResultBox(statusData.message || '转换失败');
+                                                        isProcessingQueue = false;
+                                                        processNextFileInQueue();
+                                                    }
+                                                })
+                                                .catch(err => {
+                                                    console.error('检查转换状态失败:', err);
+                                                    // 不中断检查，可能只是临时网络问题
+                                                });
+                                        }, 1000);
+                                    })
+                                    .catch(err => {
+                                        console.error('启动转换失败:', err);
+                                        addLog(`启动转换请求失败: ${err.message || err}`, 'error');
+                                        showErrorInResultBox('启动转换失败，请重试');
+                                        isProcessingQueue = false;
+                                        processNextFileInQueue();
+                                    });
                             } else {
-                                // No conversion needed, directly proceed to transcription
+                                // 不需要转换，直接上传
+                                addLog('文件格式已兼容，无需转换', 'success');
                                 const transcribeFormData = new FormData();
                                 transcribeFormData.append('audio', file);
-                                // Common params for uploadAudio will be added there
-                                uploadAudio(transcribeFormData, file.name, data.is_video ? 'video' : 'audio');
+                                uploadAudio(transcribeFormData, file.name, data.is_video ? 'video' : 'audio', function() {
+                                    // 上传完成后的回调，继续处理队列
+                                    isProcessingQueue = false;
+                                    processNextFileInQueue();
+                                });
                             }
                         })
                         .catch(error => {
                             console.error('文件格式检查失败:', error);
+                            addLog(`文件格式检查请求失败: ${error.message || error}`, 'error');
                             showErrorInResultBox(window.i18n ? window.i18n.get('error') + ': ' + error : '检查文件格式时出错');
+                            // 出错后仍继续处理下一个文件
+                            isProcessingQueue = false;
+                            processNextFileInQueue();
                         });
                 }
 
-                function showFileConversionDialog(checkData, fileName) {
+                function completeConversion(conversionId, fileName) {
+                    addLog('准备提交转换后的文件进行识别', 'info');
+                    
+                    const userApiKey = localStorage.getItem('azureSpeechApiKey');
+                    const userApiRegion = localStorage.getItem('azureSpeechApiRegion');
+                    
+                    if (!userApiKey || !userApiRegion) {
+                        addLog('API密钥或区域未设置，打开设置面板', 'error');
+                        alert(window.i18n ? window.i18n.get('api-key-region-empty') : '请先在设置中配置Azure API密钥和区域。');
+                        settingsModalInstance.show();
+                        detailsContainer.style.display = 'block';
+                        isProcessingQueue = false;
+                        processNextFileInQueue();
+                        return;
+                    }
+
+                    addLog(`配置识别参数: 语言=${languageModalEl.value}, 并行线程=${parallelThreadsModalEl.value}`, 'info');
+                    
+                    const requestData = {
+                        language: languageModalEl.value,
+                        api_key: userApiKey,
+                        api_region: userApiRegion,
+                        parallel_threads: parallelThreadsModalEl.value,
+                        segment_length: segmentLengthModalEl.value
+                    };
+
+                    // 添加时间戳
+                    const now = new Date();
+                    const localYear = now.getFullYear();
+                    const localMonth = now.getMonth() + 1;
+                    const localDate = now.getDate();
+                    const localHours = now.getHours();
+                    const localMinutes = now.getMinutes();
+                    const localSeconds = now.getSeconds();
+                    
+                    const formattedBrowserTime = `${localYear}-${String(localMonth).padStart(2, '0')}-${String(localDate).padStart(2, '0')}-` +
+                                             `${String(localHours).padStart(2, '0')}-${String(localMinutes).padStart(2, '0')}-${String(localSeconds).padStart(2, '0')}`;
+                    requestData.formatted_browser_time = formattedBrowserTime;
+
+                    addLog('提交转换后的文件...', 'info');
+                    
+                    fetch(`/api/complete-conversion/${conversionId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            addLog(`提交失败: ${data.error}`, 'error');
+                            showErrorInResultBox(data.code === 'NO_API_SETTINGS' ? '请先设置API密钥和区域。' : data.error);
+                            if(data.code === 'NO_API_SETTINGS') settingsModalInstance.show();
+                            isProcessingQueue = false;
+                            processNextFileInQueue();
+                            return;
+                        }
+                        
+                        addLog(`提交成功，任务ID: ${data.task_id}`, 'success');
+                        currentTaskId = data.task_id;
+                        showTaskProcessing(data.task_id, data.original_filename || fileName, data.file_type || 'audio', data.original_duration);
+                        startStatusCheck(data.task_id);
+                        loadTasksFromApi(); // 刷新任务列表
+                        
+                        // 转换完成，继续处理队列
+                        isProcessingQueue = false;
+                        processNextFileInQueue();
+                    })
+                    .catch(err => {
+                        console.error('完成转换请求失败:', err);
+                        addLog(`提交请求失败: ${err.message || err}`, 'error');
+                        showErrorInResultBox('完成转换失败，请重试。');
+                        isProcessingQueue = false;
+                        processNextFileInQueue();
+                    });
+                }
+
+                function showFileConversionDialog(checkData, fileName, callback) {
                     // Clear previous conversion interval if any
                     if (conversionStatusInterval) clearInterval(conversionStatusInterval);
 
@@ -738,6 +1033,9 @@
                             conversionModal.hide();
                             settingsModalInstance.show();
                             detailsContainer.style.display = 'block';
+                            
+                            // 调用回调
+                            if (callback && typeof callback === 'function') callback();
                             return;
                         }
 
@@ -776,23 +1074,36 @@
                             if (data.error) {
                                 showErrorInResultBox(data.code === 'NO_API_SETTINGS' ? '请先设置API密钥和区域。' : data.error);
                                 if(data.code === 'NO_API_SETTINGS') settingsModalInstance.show();
+                                
+                                // 调用回调
+                                if (callback && typeof callback === 'function') callback();
                                 return;
                             }
                             currentTaskId = data.task_id;
                             showTaskProcessing(data.task_id, data.original_filename || fileName, data.file_type || 'audio', data.original_duration);
                             startStatusCheck(data.task_id);
                             loadTasksFromApi(); // Refresh list
+                            
+                            // 调用回调
+                            if (callback && typeof callback === 'function') callback();
                         })
                         .catch(err => {
                             conversionModal.hide();
                             console.error('完成转换请求失败:', err);
                             showErrorInResultBox('完成转换失败，请重试。');
+                            
+                            // 调用回调
+                            if (callback && typeof callback === 'function') callback();
                         });
                     };
                     
+                    // 添加对modal关闭时的处理
                     modalInstance.addEventListener('hidden.bs.modal', () => {
                         clearInterval(conversionStatusInterval);
                         modalInstance.remove();
+                        
+                        // 如果点击取消，也要调用回调继续处理队列
+                        if (callback && typeof callback === 'function') callback();
                     });
                 }
 
@@ -834,18 +1145,21 @@
                         });
                 }
                 
-                function uploadAudio(formData, fileName, fileType) {
+                function uploadAudio(formData, fileName, fileType, callback) {
                     resultEl.textContent = window.i18n ? window.i18n.get('uploading') : '上传中...';
                     detailsContainer.style.display = 'block';
                     taskInfoBox.style.display = 'block';
-
+                    
+                    addLog(`准备上传文件: ${fileName}`, 'info');
 
                     const userApiKey = localStorage.getItem('azureSpeechApiKey');
                     const userApiRegion = localStorage.getItem('azureSpeechApiRegion');
                     if (!userApiKey || !userApiRegion) {
+                        addLog('API密钥或区域未设置，打开设置面板', 'error');
                         alert(window.i18n ? window.i18n.get('api-key-region-empty') : '请先在设置中配置Azure API密钥和区域。');
                         settingsModalInstance.show();
                         resultEl.textContent = window.i18n ? window.i18n.get('api-settings-incomplete') : '错误：API设置未完成。';
+                        if (callback && typeof callback === 'function') callback();
                         return;
                     }
                     
@@ -861,7 +1175,8 @@
                     // 格式化成所需的字符串
                     const formattedBrowserTime = `${localYear}-${String(localMonth).padStart(2, '0')}-${String(localDate).padStart(2, '0')}-` +
                                              `${String(localHours).padStart(2, '0')}-${String(localMinutes).padStart(2, '0')}-${String(localSeconds).padStart(2, '0')}`;
-                    console.log(`上传文件时的本地时间: ${now.toLocaleString()}, 格式化后: ${formattedBrowserTime}`);
+                    
+                    addLog(`添加表单参数: API区域=${userApiRegion}, 语言=${languageModalEl.value}, 并行线程=${parallelThreadsModalEl.value}`, 'info');
                     
                     formData.append('api_key', userApiKey);
                     formData.append('api_region', userApiRegion);
@@ -869,17 +1184,22 @@
                     formData.append('parallel_threads', parallelThreadsModalEl.value);
                     formData.append('segment_length', segmentLengthModalEl.value);
                     formData.append('formatted_browser_time', formattedBrowserTime);
+                    
+                    addLog('开始上传文件...', 'info');
+                    
                     // original_duration is added in /api/transcribe if not a conversion flow
-
                     fetch('/api/transcribe', { method: 'POST', body: formData })
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {
+                                addLog(`上传失败: ${data.error}`, 'error');
                                 showErrorInTaskBox(data.code === 'NO_API_SETTINGS' ? '请先设置API密钥和区域。' : data.error, fileName, fileType);
                                 if(data.code === 'NO_API_SETTINGS') settingsModalInstance.show();
+                                if (callback && typeof callback === 'function') callback();
                                 return;
                             }
                             if (data.task_id) {
+                                addLog(`上传成功，任务ID: ${data.task_id}`, 'success');
                                 currentTaskId = data.task_id;
                                 // Duration might be in data if direct upload, or known from conversion
                                 showTaskProcessing(data.task_id, fileName, fileType, data.original_duration); 
@@ -887,11 +1207,14 @@
                                 loadTasksFromApi(); // Refresh list
                             }
                             if(recordingStatusEl) recordingStatusEl.textContent = '点击开始录音';
+                            if (callback && typeof callback === 'function') callback();
                         })
                         .catch(error => {
                             console.error('上传失败:', error);
+                            addLog(`上传请求失败: ${error.message || error}`, 'error');
                             showErrorInTaskBox('上传或识别过程中出错', fileName, fileType);
-                             if(recordingStatusEl) recordingStatusEl.textContent = '点击开始录音';
+                            if(recordingStatusEl) recordingStatusEl.textContent = '点击开始录音';
+                            if (callback && typeof callback === 'function') callback();
                         });
                 }
                 
@@ -901,30 +1224,32 @@
                         stopMicRecording();
                         return;
                     }
-                navigator.mediaDevices.getUserMedia({ audio: true })
-                    .then(stream => {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(stream => {
                             console.log('getUserMedia success');
-                        mediaRecorder = new MediaRecorder(stream);
-                        mediaRecorder.start();
-                        isRecording = true;
-                        audioChunks = [];
+                            mediaRecorder = new MediaRecorder(stream);
+                            mediaRecorder.start();
+                            isRecording = true;
+                            audioChunks = [];
                             mediaRecorder.addEventListener('dataavailable', event => audioChunks.push(event.data));
-                        mediaRecorder.addEventListener('stop', () => {
+                            mediaRecorder.addEventListener('stop', () => {
                                 console.log('mediaRecorder stopped, processing audio.');
-                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                            const formData = new FormData();
+                                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                                const formData = new FormData();
                                 formData.append('audio', audioBlob, 'microphone-recording.wav');
                                 // Language and other params will be added in uploadAudio
-                            uploadAudio(formData, '麦克风录音', 'audio');
-                        });
+                                uploadAudio(formData, '麦克风录音', 'audio', function() {
+                                    if (recordingStatusEl) recordingStatusEl.textContent = '点击开始录音';
+                                });
+                            });
                             startMicRecordingBtn.innerHTML = '<i class="fas fa-stop"></i> 停止录音';
                             if(recordingStatusEl) recordingStatusEl.textContent = '正在录音...';
-                    })
-                    .catch(error => {
-                        console.error('获取麦克风失败:', error);
+                        })
+                        .catch(error => {
+                            console.error('获取麦克风失败:', error);
                             alert('无法访问麦克风，请检查权限设置。');
-                    });
-            }
+                        });
+                }
             
                 function stopMicRecording() {
                     console.log('stopMicRecording function called.');
@@ -961,9 +1286,22 @@
                         .then(response => response.json())
                         .then(tasks => {
                             renderTaskList(tasks);
-                            if (showTaskId) { // If a specific task needs to be focused (e.g., after creation)
+                            if (showTaskId) { // 场景1：显式要求突出显示某任务
                                 const task = tasks.find(t => t.id === showTaskId);
                                 if (task) displayTaskDetails(task);
+                            } else if (window._autoShowTaskId) { // 场景2：页面初载，需要恢复之前的任务
+                                const task = tasks.find(t => t.id === window._autoShowTaskId);
+                                if (task) displayTaskDetails(task);
+                                window._autoShowTaskId = null; // 用完即清
+                            } else if (currentTaskId) {
+                                // 如果当前正在查看某个任务，则在刷新后重新加载其日志
+                                loadTaskLogs(currentTaskId);
+                            } else {
+                                // 场景3：用户第一次打开页面或没有记录，自动选中最新任务
+                                if (tasks && tasks.length > 0) {
+                                    // 选中最新创建的任务（已按 created_at 排序）
+                                    displayTaskDetails(tasks[0]);
+                                }
                             }
                 })
                 .catch(error => {
@@ -1062,6 +1400,11 @@
                         checkTaskStatus(task.id); // Initial check
                         startStatusCheck(task.id);
                     }
+                    
+                    // 加载当前任务的日志
+                    loadTaskLogs(task.id);
+                    // 记住用户上次查看的任务
+                    localStorage.setItem('lastViewedTaskId', task.id);
                 }
 
                 function showTaskProcessing(taskId, fileName, fileType, duration) {
@@ -1084,6 +1427,9 @@
                     
                     const pleaseWaitText = window.i18n ? window.i18n.get('please-wait') : '请耐心等待。';
                     resultEl.textContent = processingText + ' ' + pleaseWaitText;
+
+                    // 记住当前查看的任务，便于刷新后恢复
+                    localStorage.setItem('lastViewedTaskId', taskId);
                 }
 
                 function showTaskCompleted(resultText, fileName, fileType, duration) {
@@ -1128,10 +1474,16 @@
                     if (resultEl.textContent === clickToViewText) {
                         detailsContainer.style.display = 'none';
                     }
+                    
+                    // 加载通用日志，因为当前不再查看特定任务
+                    loadGeneralLogs();
+                    // 清除本地存储的 lastViewedTaskId
+                    localStorage.removeItem('lastViewedTaskId');
                 }
 
             function startStatusCheck(taskId) {
                     if(statusCheckInterval) clearInterval(statusCheckInterval);
+                    addLog(`开始监控任务状态: ${taskId}`, 'info');
                     statusCheckInterval = setInterval(() => checkTaskStatus(taskId), 2000); // Check every 2s
                 }
 
@@ -1140,45 +1492,55 @@
                     fetch(`/api/status/${taskIdToCheck}`)
                     .then(response => response.json())
                     .then(data => {
-                            if (!currentTaskId || currentTaskId !== taskIdToCheck) { // If user switched task view
-                                clearInterval(statusCheckInterval);
-                                return;
-                            }
-                            
-                            const fileName = data.file_info?.name || taskInfoBox.dataset.fileName || '未知文件';
-                            const fileType = data.file_info?.type || taskInfoBox.dataset.fileType || 'audio';
-                            const duration = data.file_info?.original_duration || taskInfoBox.dataset.duration || 0;
+                        if (!currentTaskId || currentTaskId !== taskIdToCheck) { // If user switched task view
+                            clearInterval(statusCheckInterval);
+                            return;
+                        }
+                        
+                        const fileName = data.file_info?.name || taskInfoBox.dataset.fileName || '未知文件';
+                        const fileType = data.file_info?.type || taskInfoBox.dataset.fileType || 'audio';
+                        const duration = data.file_info?.original_duration || taskInfoBox.dataset.duration || 0;
 
                         if (data.progress !== undefined) {
-                                progressBarEl.style.width = `${data.progress}%`;
-                                progressBarEl.setAttribute('aria-valuenow', data.progress);
+                            progressBarEl.style.width = `${data.progress}%`;
+                            progressBarEl.setAttribute('aria-valuenow', data.progress);
+                            
+                            // 添加进度日志（只在进度变化明显时）
+                            if (data.progress % 20 === 0 || data.progress === 100) {
+                                addLog(`识别进度: ${data.progress}%`, 'info');
                             }
-                            // resultEl.textContent = data.current_text || resultEl.textContent; // Avoid overwriting final result with partial
+                        }
                         
+                        // resultEl.textContent = data.current_text || resultEl.textContent; // Avoid overwriting final result with partial
+                    
                         if (data.status === 'completed' && data.result) {
-                                clearInterval(statusCheckInterval);
-                                if (data.result.status === 'success') {
-                                    showTaskCompleted(data.result.text, fileName, fileType, duration);
+                            clearInterval(statusCheckInterval);
+                            if (data.result.status === 'success') {
+                                addLog('识别完成！', 'success');
+                                showTaskCompleted(data.result.text, fileName, fileType, duration);
                             } else {
-                                    showErrorInTaskBox(data.result.error || '识别失败', fileName, fileType, duration);
+                                addLog(`识别失败: ${data.result.error || '未知错误'}`, 'error');
+                                showErrorInTaskBox(data.result.error || '识别失败', fileName, fileType, duration);
                             }
-                                loadTasksFromApi(); // Refresh list as status changed
+                            loadTasksFromApi(); // Refresh list as status changed
                         } else if (data.status === 'failed') {
                             clearInterval(statusCheckInterval);
-                                showErrorInTaskBox(data.error || '任务处理失败', fileName, fileType, duration);
-                                loadTasksFromApi(); // Refresh list
-                            } else if (data.status === 'processing') {
-                                // Update info if it's still the current task
-                                showTaskProcessing(taskIdToCheck, fileName, fileType, duration);
-                                 if (data.current_text && resultEl.textContent.startsWith("音频处理中") ) { // Only update if it's still placeholder
-                                    resultEl.textContent = data.current_text;
-                                }
+                            addLog(`任务失败: ${data.error || '处理出错'}`, 'error');
+                            showErrorInTaskBox(data.error || '任务处理失败', fileName, fileType, duration);
+                            loadTasksFromApi(); // Refresh list
+                        } else if (data.status === 'processing') {
+                            // Update info if it's still the current task
+                            showTaskProcessing(taskIdToCheck, fileName, fileType, duration);
+                            if (data.current_text && resultEl.textContent.startsWith("音频处理中")) { // Only update if it's still placeholder
+                                resultEl.textContent = data.current_text;
+                                addLog('收到部分识别结果', 'info');
+                            }
                         }
                     })
                     .catch(error => {
                         console.error('状态检查失败:', error);
-                            // clearInterval(statusCheckInterval); // Optionally stop on error
-                        });
+                        addLog(`状态检查请求失败: ${error.message || error}`, 'warning');
+                    });
                 }
                 
                 function generateAndDownloadTxtFile(txtTaskId, fileName) {
@@ -1444,6 +1806,145 @@
                         cleanFilesBtnModal.disabled = false;
                         cleanFilesBtnModal.innerHTML = window.i18n ? window.i18n.get('clean-temp') : '清除临时文件';
                     });
+                }
+
+                // 添加日志处理函数
+                /**
+                 * 添加一条日志到日志区域
+                 * @param {string} message - 日志消息
+                 * @param {string} type - 日志类型: 'info', 'warning', 'error', 'success'
+                 * @param {string} taskId - 任务ID，如果没有则使用当前任务ID
+                 */
+                function addLog(message, type = 'info', taskId = null) {
+                    if (!logAreaEl) return;
+                    
+                    // 使用任务ID或通用日志
+                    const logTaskId = taskId || currentTaskId || 'general';
+                    
+                    // 创建日志条目
+                    const now = new Date();
+                    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+                    
+                    // 添加到页面显示
+                    // 如果是第一次添加日志，清空占位内容
+                    if (logAreaEl.querySelector('.text-muted')) {
+                        logAreaEl.innerHTML = '';
+                    }
+                    
+                    // 创建日志DOM元素
+                    const entry = document.createElement('div');
+                    entry.className = `log-entry`;
+                    entry.innerHTML = `<span class="log-time">[${timeStr}]</span><span class="log-${type}">${message}</span>`;
+                    
+                    // 添加到日志区域
+                    logAreaEl.appendChild(entry);
+                    
+                    // 自动滚动到底部
+                    logAreaEl.scrollTop = logAreaEl.scrollHeight;
+                    
+                    // 发送到服务器存储
+                    if (logTaskId === 'general') {
+                        // 发送通用日志
+                        fetch('/api/logs/general', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: message,
+                                type: type
+                            })
+                        }).catch(err => {
+                            console.error('保存通用日志到服务器失败:', err);
+                        });
+                    } else {
+                        // 发送任务日志
+                        fetch(`/api/logs/${logTaskId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                message: message,
+                                type: type
+                            })
+                        }).catch(err => {
+                            console.error(`保存任务[${logTaskId}]日志到服务器失败:`, err);
+                        });
+                    }
+                }
+
+                /**
+                 * 从服务器加载任务日志
+                 * @param {string} taskId - 任务ID
+                 */
+                function loadTaskLogs(taskId) {
+                    if (!logAreaEl) return;
+                    
+                    // 清空当前显示的日志
+                    logAreaEl.innerHTML = '<div class="text-muted text-center">加载日志中...</div>';
+                    
+                    fetch(`/api/logs/${taskId}`)
+                        .then(response => response.json())
+                        .then(logs => {
+                            // 清空之前的日志
+                            logAreaEl.innerHTML = '';
+                            
+                            if (logs.length === 0) {
+                                logAreaEl.innerHTML = '<div class="text-muted text-center">没有日志记录</div>';
+                                return;
+                            }
+                            
+                            // 添加所有日志条目
+                            logs.forEach(log => {
+                                const entry = document.createElement('div');
+                                entry.className = `log-entry`;
+                                const timeDisplay = log.timestamp ? formatTime(log.timestamp) : log.time;
+                                entry.innerHTML = `<span class="log-time">[${timeDisplay}]</span><span class="log-${log.type}">${log.message}</span>`;
+                                logAreaEl.appendChild(entry);
+                            });
+                            
+                            // 滚动到底部
+                            logAreaEl.scrollTop = logAreaEl.scrollHeight;
+                        })
+                        .catch(err => {
+                            logAreaEl.innerHTML = '<div class="text-danger text-center">加载日志失败</div>';
+                            console.error('从服务器加载日志失败:', err);
+                        });
+                }
+
+                /**
+                 * 加载通用日志
+                 */
+                function loadGeneralLogs() {
+                    if (!logAreaEl) return;
+                    
+                    // 清空当前显示的日志
+                    logAreaEl.innerHTML = '<div class="text-muted text-center">加载日志中...</div>';
+                    
+                    fetch('/api/logs/general')
+                        .then(response => response.json())
+                        .then(logs => {
+                            // 清空之前的日志
+                            logAreaEl.innerHTML = '';
+                            
+                            if (logs.length === 0) {
+                                logAreaEl.innerHTML = '<div class="text-muted text-center">没有日志记录</div>';
+                                return;
+                            }
+                            
+                            // 添加所有日志条目
+                            logs.forEach(log => {
+                                const entry = document.createElement('div');
+                                entry.className = `log-entry`;
+                                const timeDisplay = log.timestamp ? formatTime(log.timestamp) : log.time;
+                                entry.innerHTML = `<span class="log-time">[${timeDisplay}]</span><span class="log-${log.type}">${log.message}</span>`;
+                                logAreaEl.appendChild(entry);
+                            });
+                            
+                            // 滚动到底部
+                            logAreaEl.scrollTop = logAreaEl.scrollHeight;
+                        })
+                        .catch(err => {
+                            logAreaEl.innerHTML = '<div class="text-danger text-center">加载日志失败</div>';
+                            console.error('从服务器加载通用日志失败:', err);
+                        });
                 }
 
             } catch (e) {

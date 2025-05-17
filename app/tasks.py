@@ -261,6 +261,43 @@ def update_task_progress(task_id, progress, text=None, status='processing'):
             
         # 设置过期时间（7天）
         redis_client.expire(f'task:{task_id}', 60 * 60 * 24 * 7)
+
+        # --- 新增：将此次进度/信息写入日志列表，便于页面刷新后回溯 ---
+        try:
+            # 生成日志文本
+            if text is not None:
+                log_message = text
+            else:
+                # 若无文本，则记录进度百分比或状态变动
+                log_message = f"进度更新: {progress}% (状态: {status})"
+
+            log_entry = {
+                'time': datetime.now().strftime('%H:%M:%S'),
+                'timestamp': time.time(),
+                'message': log_message,
+                'type': 'error' if status == 'failed' else ('success' if status == 'completed' else 'info')
+            }
+
+            # 读取已有日志
+            logs_raw = redis_client.hget(f'task:{task_id}', 'logs')
+            logs = []
+            if logs_raw:
+                try:
+                    logs = json.loads(logs_raw)
+                except Exception:
+                    # 若解析失败则丢弃旧日志，避免阻断
+                    logs = []
+
+            logs.append(log_entry)
+
+            # 保持日志长度不过长（最近 500 条）
+            if len(logs) > 500:
+                logs = logs[-500:]
+
+            redis_client.hset(f'task:{task_id}', 'logs', json.dumps(logs))
+        except Exception as log_exc:
+            # 日志写入失败时仅打印，不影响主逻辑
+            print(f"写入任务日志失败: {str(log_exc)}")
     except Exception as e:
         print(f"更新任务进度失败: {str(e)}")
 
@@ -673,6 +710,20 @@ def transcribe_audio(file_path, language='ja-JP', file_type=None, api_key=None, 
         original_duration: 原始文件的时长（秒）
     """
     task_id = transcribe_audio.request.id
+    
+    # 确保参数是正确的类型
+    try:
+        if parallel_threads is not None:
+            parallel_threads = int(parallel_threads)
+        if segment_length is not None:
+            segment_length = int(segment_length)
+        if original_duration is not None:
+            original_duration = float(original_duration)
+    except (ValueError, TypeError) as e:
+        error_msg = f"参数类型转换错误: {str(e)}"
+        print(error_msg)
+        update_task_progress(task_id, 0, status='failed')
+        return {'status': 'error', 'error': error_msg}
     
     # 设置并行线程数
     if parallel_threads is None or parallel_threads <= 0:

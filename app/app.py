@@ -37,6 +37,14 @@ ALLOWED_VIDEO_TYPES = {'video/mp4', 'video/avi', 'video/mpeg', 'video/quicktime'
 # 存储ffmpeg转换进度信息
 conversion_status = {}
 
+# 任务日志等级
+LOG_LEVELS = {
+    'info': 'INFO',
+    'warning': 'WARNING',
+    'error': 'ERROR',
+    'success': 'SUCCESS'
+}
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -629,7 +637,8 @@ def check_file_format():
     uploaded_file = request.files['file']
     
     # 生成临时文件保存上传的文件
-    temp_dir = tempfile.mkdtemp(prefix="upload_")
+    temp_dir = os.path.join(os.getcwd(), 'shared_data', f"upload_{str(uuid.uuid4())}")
+    os.makedirs(temp_dir, exist_ok=True)
     original_filename = uploaded_file.filename
     file_path = os.path.join(temp_dir, original_filename)
     uploaded_file.save(file_path)
@@ -695,7 +704,9 @@ def convert_file(conversion_id):
     
     # 生成输出文件路径
     output_filename = f"temp_{str(uuid.uuid4())[:8]}.wav"
-    output_file = os.path.join(os.path.dirname(original_file), output_filename)
+    shared_dir = os.path.join(os.getcwd(), 'shared_data')
+    os.makedirs(shared_dir, exist_ok=True)
+    output_file = os.path.join(shared_dir, output_filename)
     
     # 更新状态
     status_data['status'] = 'converting'
@@ -834,7 +845,7 @@ def complete_conversion(conversion_id):
     
     # 将转换后的文件移动到主工作目录
     final_filename = f"temp_{str(uuid.uuid4())}.wav"
-    final_path = os.path.join(os.getcwd(), final_filename)
+    final_path = os.path.join(os.getcwd(), 'shared_data', final_filename)
     shutil.copy(output_file, final_path)
     
     # 从请求中获取其他参数
@@ -1083,6 +1094,214 @@ def clean_files_route():
         return jsonify({
             'status': 'error',
             'message': f'清理文件时出错: {str(e)}'
+        }), 500
+
+# 日志相关API端点
+@app.route('/api/logs/<task_id>', methods=['GET'])
+def get_task_logs(task_id):
+    """获取特定任务的日志"""
+    try:
+        logs_data = redis_client.hget(f'task:{task_id}', 'logs')
+        # 如果尚未存储日志，则尝试根据 progress_data/result 自动生成一份简要日志
+        if not logs_data:
+            progress_data_raw = redis_client.hget(f'task:{task_id}', 'progress_data')
+            result_data_raw = redis_client.hget(f'task:{task_id}', 'result')
+            auto_logs = []
+
+            # 1. 基于 progress_data 构造
+            if progress_data_raw:
+                try:
+                    pd = json.loads(progress_data_raw)
+                    auto_logs.append({
+                        'time': datetime.now().strftime('%H:%M:%S'),
+                        'timestamp': time.time(),
+                        'message': f"自动生成日志：进度 {pd.get('progress',0)}%，状态 {pd.get('status')}",
+                        'type': 'info'
+                    })
+                except Exception:
+                    pass
+
+            # 2. 若有最终结果
+            if result_data_raw:
+                try:
+                    rd = json.loads(result_data_raw)
+                    auto_logs.append({
+                        'time': datetime.now().strftime('%H:%M:%S'),
+                        'timestamp': time.time(),
+                        'message': '任务已完成',
+                        'type': 'success' if rd.get('status')=='success' else 'error'
+                    })
+                except Exception:
+                    pass
+
+            # 存回 Redis，避免下次再生成
+            if auto_logs:
+                redis_client.hset(f'task:{task_id}', 'logs', json.dumps(auto_logs))
+                return jsonify(auto_logs), 200
+            else:
+                return jsonify([]), 200
+        
+        logs = json.loads(logs_data)
+        return jsonify(logs), 200
+    except Exception as e:
+        app.logger.error(f"获取任务日志失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'获取任务日志失败: {str(e)}'
+        }), 500
+
+@app.route('/api/logs/<task_id>', methods=['POST'])
+def add_task_log(task_id):
+    """添加日志到指定任务"""
+    try:
+        data = request.json
+        if not data or 'message' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': '缺少必要的日志信息'
+            }), 400
+            
+        message = data.get('message')
+        log_type = data.get('type', 'info')
+        
+        # 验证日志类型
+        if log_type not in LOG_LEVELS:
+            log_type = 'info'
+        
+        # 获取现有日志
+        logs_data = redis_client.hget(f'task:{task_id}', 'logs')
+        logs = []
+        if logs_data:
+            logs = json.loads(logs_data)
+            
+        # 添加新日志条目
+        now = time.time()
+        log_entry = {
+            'time': datetime.now().strftime('%H:%M:%S'),
+            'timestamp': now,
+            'message': message,
+            'type': log_type
+        }
+        logs.append(log_entry)
+        
+        # 更新Redis
+        redis_client.hset(f'task:{task_id}', 'logs', json.dumps(logs))
+        
+        return jsonify({
+            'status': 'success',
+            'log_entry': log_entry
+        }), 200
+    except Exception as e:
+        app.logger.error(f"添加任务日志失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'添加任务日志失败: {str(e)}'
+        }), 500
+
+@app.route('/api/logs/<task_id>', methods=['DELETE'])
+def clear_task_logs(task_id):
+    """清除指定任务的日志"""
+    try:
+        # 清空日志
+        redis_client.hset(f'task:{task_id}', 'logs', json.dumps([]))
+        
+        return jsonify({
+            'status': 'success',
+            'message': '日志已清除'
+        }), 200
+    except Exception as e:
+        app.logger.error(f"清除任务日志失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'清除任务日志失败: {str(e)}'
+        }), 500
+
+@app.route('/api/logs/general', methods=['GET'])
+def get_general_logs():
+    """获取通用日志（不特定于任何任务）"""
+    try:
+        logs_data = redis_client.get('general_logs')
+        if not logs_data:
+            return jsonify([]), 200
+            
+        logs = json.loads(logs_data)
+        return jsonify(logs), 200
+    except Exception as e:
+        app.logger.error(f"获取通用日志失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'获取通用日志失败: {str(e)}'
+        }), 500
+
+@app.route('/api/logs/general', methods=['POST'])
+def add_general_log():
+    """添加通用日志（不特定于任何任务）"""
+    try:
+        data = request.json
+        if not data or 'message' not in data:
+            return jsonify({
+                'status': 'error',
+                'message': '缺少必要的日志信息'
+            }), 400
+            
+        message = data.get('message')
+        log_type = data.get('type', 'info')
+        
+        # 验证日志类型
+        if log_type not in LOG_LEVELS:
+            log_type = 'info'
+        
+        # 获取现有日志
+        logs_data = redis_client.get('general_logs')
+        logs = []
+        if logs_data:
+            logs = json.loads(logs_data)
+            
+        # 添加新日志条目
+        now = time.time()
+        log_entry = {
+            'time': datetime.now().strftime('%H:%M:%S'),
+            'timestamp': now,
+            'message': message,
+            'type': log_type
+        }
+        logs.append(log_entry)
+        
+        # 限制日志数量，保留最新的500条
+        if len(logs) > 500:
+            logs = logs[-500:]
+        
+        # 更新Redis
+        redis_client.set('general_logs', json.dumps(logs))
+        redis_client.expire('general_logs', 60 * 60 * 24 * 7)  # 7天过期
+        
+        return jsonify({
+            'status': 'success',
+            'log_entry': log_entry
+        }), 200
+    except Exception as e:
+        app.logger.error(f"添加通用日志失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'添加通用日志失败: {str(e)}'
+        }), 500
+
+@app.route('/api/logs/general', methods=['DELETE'])
+def clear_general_logs():
+    """清除通用日志"""
+    try:
+        # 清空日志
+        redis_client.set('general_logs', json.dumps([]))
+        
+        return jsonify({
+            'status': 'success',
+            'message': '通用日志已清除'
+        }), 200
+    except Exception as e:
+        app.logger.error(f"清除通用日志失败: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'清除通用日志失败: {str(e)}'
         }), 500
 
 if __name__ == '__main__':
