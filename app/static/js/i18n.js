@@ -81,7 +81,21 @@ const translations = {
     'starting-conversion': '开始转换',
     'conversion-completed': '转换完成，可以开始识别。',
     'use-converted-file': '使用转换后的文件',
-    'welcome-message': '欢迎使用！请先在设置中配置您的Azure API密钥和区域。'
+    'welcome-message': '欢迎使用！请先在设置中配置您的Azure API密钥和区域。',
+    // 语言名称翻译
+    'lang-zh-CN': '简体中文',
+    'lang-zh-HK': '粤语/香港',
+    'lang-zh-TW': '繁体中文',
+    'lang-en-US': '英语/美国',
+    'lang-en-GB': '英语/英国',
+    'lang-ja-JP': '日语',
+    'lang-ko-KR': '韩语',
+    'lang-fr-FR': '法语',
+    'lang-de-DE': '德语',
+    'lang-es-ES': '西班牙语',
+    'lang-it-IT': '意大利语',
+    'lang-pt-BR': '葡萄牙语',
+    'lang-ru-RU': '俄语'
   },
   
   // 英语翻译
@@ -165,7 +179,21 @@ const translations = {
     'starting-conversion': 'Start Conversion',
     'conversion-completed': 'Conversion complete, ready for recognition.',
     'use-converted-file': 'Use Converted File',
-    'welcome-message': 'Welcome! Please configure your Azure API key and region in the settings before using the tool.'
+    'welcome-message': 'Welcome! Please configure your Azure API key and region in the settings before using the tool.',
+    // 语言名称翻译
+    'lang-zh-CN': 'Chinese Simplified',
+    'lang-zh-HK': 'Chinese (Cantonese/HK)',
+    'lang-zh-TW': 'Chinese Traditional',
+    'lang-en-US': 'English (US)',
+    'lang-en-GB': 'English (UK)',
+    'lang-ja-JP': 'Japanese',
+    'lang-ko-KR': 'Korean',
+    'lang-fr-FR': 'French',
+    'lang-de-DE': 'German',
+    'lang-es-ES': 'Spanish',
+    'lang-it-IT': 'Italian',
+    'lang-pt-BR': 'Portuguese',
+    'lang-ru-RU': 'Russian'
   },
   
   // 日语翻译
@@ -249,7 +277,21 @@ const translations = {
     'starting-conversion': '変換開始',
     'conversion-completed': '変換完了、認識の準備ができました。',
     'use-converted-file': '変換後のファイルを使用',
-    'welcome-message': 'ようこそ！まずは設定でAzure APIキーとリージョンを設定してください。'
+    'welcome-message': 'ようこそ！まずは設定でAzure APIキーとリージョンを設定してください。',
+    // 语言名称翻译
+    'lang-zh-CN': '中国語（簡体字）',
+    'lang-zh-HK': '中国語（広東語/香港）',
+    'lang-zh-TW': '中国語（繁体字）',
+    'lang-en-US': '英語（アメリカ）',
+    'lang-en-GB': '英語（イギリス）',
+    'lang-ja-JP': '日本語',
+    'lang-ko-KR': '韓国語',
+    'lang-fr-FR': 'フランス語',
+    'lang-de-DE': 'ドイツ語',
+    'lang-es-ES': 'スペイン語',
+    'lang-it-IT': 'イタリア語',
+    'lang-pt-BR': 'ポルトガル語',
+    'lang-ru-RU': 'ロシア語'
   }
 };
 
@@ -266,6 +308,9 @@ function initLanguage() {
   
   // 更新所有带data-i18n属性的元素
   updatePageLanguage();
+  
+  // 更新语言选项
+  updateLanguageOptions();
 }
 
 // 切换语言
@@ -279,7 +324,10 @@ function changeLanguage(lang) {
 
 // 获取翻译文本
 function getTranslation(key, ...params) {
-  let text = translations[currentLanguage][key] || translations['zh-CN'][key] || key;
+  // 确保使用当前语言的翻译，如果不存在则回退到中文
+  let text = translations[currentLanguage] && translations[currentLanguage][key] 
+             ? translations[currentLanguage][key] 
+             : (translations['zh-CN'] ? translations['zh-CN'][key] : key);
   
   // 处理参数替换 {0}, {1} 等
   if (params.length > 0) {
@@ -310,11 +358,26 @@ function updatePageLanguage() {
   });
 }
 
+// 更新语言选项
+function updateLanguageOptions() {
+  // 更新识别语言下拉菜单中的语言名称
+  const languageSelect = document.getElementById('languageModal');
+  if (languageSelect) {
+    Array.from(languageSelect.options).forEach(option => {
+      const langCode = option.value;
+      const langNameKey = 'lang-' + langCode;
+      const localizedName = getTranslation(langNameKey);
+      option.textContent = `${langCode} (${localizedName})`;
+    });
+  }
+}
+
 // 导出函数
 window.i18n = {
   init: initLanguage,
   change: changeLanguage,
   get: getTranslation,
   update: updatePageLanguage,
+  updateLanguageOptions: updateLanguageOptions,
   getCurrentLanguage: () => currentLanguage
 }; 
