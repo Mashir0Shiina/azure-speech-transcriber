@@ -6,11 +6,9 @@
 
 ## 一键部署
 
-选择以下任一方式快速部署您自己的实例：
+通过Railway快速部署您自己的实例：
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template/EWPt7x)
-
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Mashir0Shiina/azure-speech-transcriber)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
 
 ## 功能
 
@@ -25,19 +23,12 @@
 
 ## 部署步骤
 
-### Railway.app 部署 (有免费额度)
+### Railway 部署 (有免费额度)
 
 1. 点击上方的"Deploy on Railway"按钮
-2. 登录您的Railway账户
-3. 应用会自动配置Redis插件
-4. 部署完成后，您需要在应用的设置中配置Azure API密钥（通过应用界面的设置菜单）
-
-### Heroku 部署 (付费)
-
-1. 点击上方的"Deploy to Heroku"按钮
-2. 登录您的Heroku账户
-3. 填写应用名称和必要的环境变量（如REDIS_URL）
-4. 点击"Deploy app"按钮
+2. 登录您的Railway账户 
+3. 选择从GitHub导入，选择此仓库
+4. 添加Redis服务：New -> Add Database -> Redis
 5. 部署完成后，您需要在应用的设置中配置Azure API密钥（通过应用界面的设置菜单）
 
 ### 本地Docker部署
