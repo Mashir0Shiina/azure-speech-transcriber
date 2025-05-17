@@ -1,0 +1,6 @@
+flask==2.3.2
+azure-cognitiveservices-speech==1.43.0
+python-dotenv==1.0.0
+celery==5.3.1
+redis==4.6.0
+flask-cors==4.0.0 

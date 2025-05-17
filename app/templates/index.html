@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语音/视频转文字工具</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .top-bar {
+            background-color: #fff;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .top-bar-left .btn {
+            margin-right: 10px;
+        }
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+        }
+        .search-box {
+            position: relative;
+            margin-right: 20px;
+        }
+        .search-box input {
+            border-radius: 18px;
+            padding-left: 35px;
+            border: 1px solid #ced4da;
+            height: 36px;
+        }
+        .search-box .fa-search {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+        }
+        .btn-primary {
+            background-color: #4A90E2; /* 主题蓝色 */
+            border-color: #4A90E2;
+        }
+        .btn-primary:hover {
+            background-color: #357ABD;
+            border-color: #357ABD;
+        }
+        .btn-outline-primary {
+            color: #4A90E2;
+            border-color: #4A90E2;
+        }
+        .btn-outline-primary:hover {
+            background-color: #4A90E2;
+            color: #fff;
+        }
+
+        .main-content {
+            padding: 20px 30px;
+        }
+        .filter-bar {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filter-bar .dropdown-toggle {
+            color: #555;
+            border: none;
+            font-weight: 500;
+        }
+        .ad-banner {
+            background-color: #e9f3ff; /* 淡蓝色背景 */
+            color: #0052cc; /* 深蓝色文字 */
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .ad-banner .fa-volume-up {
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        .ad-banner .btn-close {
+            font-size: 0.8rem;
+        }
+
+        .file-list-header {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 0.5fr; /* 文件名（带摘要），操作时间，时长，操作，状态 */
+            padding: 10px 15px;
+            color: #888;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #eee;
+        }
+        .file-list {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .file-item {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr 0.5fr;
+            padding: 15px;
+            border-bottom: 1px solid #f5f5f5;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-item:hover {
+            background-color: #f9f9f9;
+        }
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            cursor: pointer; /* 表明可以点击查看详情 */
+        }
+        .file-summary {
+            font-size: 0.8rem;
+            color: #777;
+            margin-top: 2px;
+        }
+        .file-time, .file-duration {
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .file-actions .btn {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.8rem;
+            margin-right: 5px;
+        }
+        .status-icon {
+            font-size: 1.2rem;
+            text-align: right;
+        }
+        .status-icon.completed { color: #28a745; } /* 绿色 */
+        .status-icon.failed { color: #dc3545; } /* 红色 */
+        .status-icon.processing { color: #ffc107; animation: spin 1s linear infinite; } /* 黄色，旋转 */
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 识别结果和设置区域的样式（简化） */
+        .results-and-settings-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .result-box {
+            min-height: 100px;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            background-color: #f8f9fa;
+        }
+        #settingsPanel {
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .settings-fab { /* 右下角设置按钮 */
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        /* 麦克风录音按钮（如果需要） */
+        #micControls { display: none; /* 默认隐藏，由JS控制 */ }
+        
+        /* 文件转换对话框样式 */
+        #conversionProgress {
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        #conversionMessage {
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        #conversionProgressBar {
+            background-color: #0d6efd;
+            height: 20px;
+        }
+        .file-type-badge { /* 复用 */
+            font-size: 0.8em;
+            padding: 0.25em 0.6em;
+            border-radius: 4px;
+            margin-left: 5px;
+        }
+        /* 隐藏原始上传按钮，用自定义按钮触发 */
+        #audioFile { display: none; }
+    </style>
+</head>
+<body>
+    <div aria-live="polite" aria-atomic="true" style="position: fixed; top: 1rem; right: 1rem; z-index: 1060;">
+        <div id="notificationContainer" style="position: relative;">
+            <!-- Notifications will be appended here -->
+                </div>
+            </div>
+
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <div class="btn-group">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="startRecordDropdown">
+                    <i class="fas fa-microphone"></i> 开始录音
+            </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" id="startMicRecording">麦克风录音</a></li>
+                    <!-- <li><a class="dropdown-item" href="#">屏幕录制</a></li> -->
+                </ul>
+                </div>
+            <button class="btn btn-outline-primary" id="importFileBtn">
+                <i class="fas fa-upload"></i> 导入文件
+            </button>
+            <input type="file" id="audioFile" accept="audio/*,video/*">
+            </div>
+        <div class="top-bar-right">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" class="form-control" id="searchInput" placeholder="搜索">
+            </div>
+             <button id="settingsBtnFab" class="btn btn-light"> <!-- 将原设置按钮移到此处 -->
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+        </div>
+        
+    <div class="main-content">
+        <div class="filter-bar">
+            <div class="dropdown">
+                <button class="btn dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    全部文件
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="filterDropdown">
+                    <li><a class="dropdown-item active" href="#">全部文件</a></li>
+                    <!-- <li><a class="dropdown-item" href="#">音频</a></li>
+                    <li><a class="dropdown-item" href="#">视频</a></li>
+                    <li><a class="dropdown-item" href="#">收藏</a></li> -->
+                </ul>
+            </div>
+            <!-- <div>排序方式</div> -->
+        </div>
+
+        <!-- Ad Banner Removed -->
+        
+        <div class="file-list-header">
+            <div>文件</div>
+            <div>操作时间</div>
+            <div>时长</div>
+            <div>操作</div>
+            <div>状态</div>
+        </div>
+        <div id="taskList" class="file-list">
+            <!-- 文件列表项将由JS动态生成 -->
+            <!-- 示例：
+            <div class="file-item">
+                <div>
+                    <div class="file-name">示例文件名.mp4</div>
+                    <div class="file-summary">暂无摘要</div>
+                </div>
+                <div class="file-time">2023/08/15 10:30</div>
+                <div class="file-duration">00:15:32</div>
+                <div class="file-actions">
+                    <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
+                    <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="status-icon completed"><i class="fas fa-check-circle"></i></div>
+            </div>
+            -->
+        </div>
+    </div>
+
+    <!-- Results and OLD Settings Container -->
+    <div class="container results-and-settings-container" style="display: none;" id="detailsContainer">
+        <!-- Settings Panel REMOVED from here -->
+        
+        <!-- Task status information -->
+        <div id="taskInfo" class="task-info-box" style="display:none;">
+            <div class="d-flex justify-content-between">
+                <span id="taskStatus">处理中...</span>
+                <button id="dismissBtn" class="btn-close" aria-label="关闭"></button>
+                </div>
+            <div id="taskIdDisplay" class="small text-muted mt-1"></div>
+            <div id="fileInfoDisplay" class="small text-muted mt-1"></div>
+            <div class="progress mt-2" style="height: 5px;">
+                <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+        
+                <div class="mb-3">
+            <label class="form-label">识别结果</label>
+            <div class="result-box" id="result">点击文件列表中的任务查看结果或进度</div>
+                </div>
+        
+        <div class="text-center mt-4">
+            <button id="copyBtn" class="btn btn-secondary me-2">复制结果</button>
+            <button id="clearBtn" class="btn btn-outline-danger">清空结果区</button>
+        </div>
+    </div>
+        
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel">设置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="settingsModalWelcomeAlertContainer"></div> <!-- For welcome alert -->
+                <div class="mb-3">
+                        <label for="languageModal" class="form-label">识别语言 (对新任务生效)</label>
+                        <select id="languageModal" class="form-select">
+                            <option value="zh-CN">中文 (简体)</option>
+                            <option value="zh-HK">中文 (粤语/香港)</option>
+                            <option value="zh-TW">中文 (繁体/台湾)</option>
+                            <option value="en-US">英语 (美国)</option>
+                            <option value="en-GB">英语 (英国)</option>
+                            <option value="ja-JP" selected>日语</option>
+                            <option value="ko-KR">韩语</option>
+                            <option value="fr-FR">法语</option>
+                            <option value="de-DE">德语</option>
+                            <option value="es-ES">西班牙语</option>
+                            <option value="it-IT">意大利语</option>
+                            <option value="pt-BR">葡萄牙语 (巴西)</option>
+                            <option value="ru-RU">俄语</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="apiKeyModal" class="form-label">Azure Speech API 密钥</label>
+                        <input type="password" class="form-control" id="apiKeyModal" placeholder="输入您的Azure Speech API密钥">
+                    </div>
+                    <div class="mb-3">
+                        <label for="apiRegionModal" class="form-label">Azure 区域</label>
+                        <select class="form-select" id="apiRegionModal">
+                        <option value="">-- 选择区域 --</option>
+                        <option value="eastasia">East Asia</option>
+                        <option value="southeastasia">Southeast Asia</option>
+                        <option value="eastus">East US</option>
+                        <option value="eastus2">East US 2</option>
+                        <option value="westus">West US</option>
+                        <option value="westus2">West US 2</option>
+                        <option value="northeurope">North Europe</option>
+                        <option value="westeurope">West Europe</option>
+                        <option value="japaneast">Japan East</option>
+                        <option value="japanwest">Japan West</option>
+                        <option value="brazilsouth">Brazil South</option>
+                        <option value="australiaeast">Australia East</option>
+                        <option value="australiasoutheast">Australia Southeast</option>
+                        <option value="southindia">South India</option>
+                        <option value="centralindia">Central India</option>
+                        <option value="westindia">West India</option>
+                        <option value="canadacentral">Canada Central</option>
+                        <option value="canadaeast">Canada East</option>
+                        <option value="uksouth">UK South</option>
+                        <option value="ukwest">UK West</option>
+                        <option value="koreacentral">Korea Central</option>
+                        <option value="koreasouth">Korea South</option>
+                    </select>
+                </div>
+                    <div class="mb-3">
+                        <label for="parallelThreadsModal" class="form-label">并行处理线程数</label>
+                        <input type="number" class="form-control" id="parallelThreadsModal" value="10" min="1" max="32">
+                </div>
+                    <div class="mb-3">
+                        <label for="segmentLengthModal" class="form-label">音频分段长度 (秒)</label>
+                        <input type="number" class="form-control" id="segmentLengthModal" value="60" min="30" max="900" step="30">
+            </div>
+                    <div id="apiTestResultModal" class="mt-2"></div>
+        </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger me-auto" id="cleanFilesBtnModal">清除临时文件</button>
+                    <button type="button" class="btn btn-outline-secondary" id="testApiBtnModal">测试API连接</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveSettingsBtnModal">保存设置</button>
+                </div>
+                            </div>
+            </div>
+        </div>
+        
+    <!-- Mic controls remain unchanged -->
+    <div id="micControls" style="display:none;">
+        <div class="record-btn-old" id="recordBtnOld">
+                <i class="fas fa-microphone"></i>
+            </div>
+            <p id="recordingStatus" class="text-center">点击开始录音</p>
+        </div>
+        
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded event fired, script execution started.');
+            try {
+                // --- DOM Element References ---
+                const importFileBtn = document.getElementById('importFileBtn');
+                const audioFileEl = document.getElementById('audioFile');
+                const searchInput = document.getElementById('searchInput');
+                const taskListEl = document.getElementById('taskList');
+                const resultEl = document.getElementById('result');
+                const copyBtn = document.getElementById('copyBtn');
+                const clearBtn = document.getElementById('clearBtn');
+                
+                const taskInfoBox = document.getElementById('taskInfo');
+                const taskStatusEl = document.getElementById('taskStatus');
+                const taskIdDisplayEl = document.getElementById('taskIdDisplay');
+                const fileInfoDisplayEl = document.getElementById('fileInfoDisplay');
+                const dismissBtn = document.getElementById('dismissBtn');
+                const progressBarEl = document.getElementById('progressBar');
+                
+                const settingsBtnFab = document.getElementById('settingsBtnFab');
+                const settingsModalEl = document.getElementById('settingsModal');
+                const languageModalEl = document.getElementById('languageModal');
+                const apiKeyModalEl = document.getElementById('apiKeyModal');
+                const apiRegionModalEl = document.getElementById('apiRegionModal');
+                const parallelThreadsModalEl = document.getElementById('parallelThreadsModal');
+                const segmentLengthModalEl = document.getElementById('segmentLengthModal');
+                const saveSettingsBtnModal = document.getElementById('saveSettingsBtnModal');
+                const testApiBtnModal = document.getElementById('testApiBtnModal');
+                const cleanFilesBtnModal = document.getElementById('cleanFilesBtnModal');
+                const apiTestResultModalEl = document.getElementById('apiTestResultModal');
+                const settingsModalWelcomeAlertContainer = document.getElementById('settingsModalWelcomeAlertContainer');
+
+                const detailsContainer = document.getElementById('detailsContainer');
+                
+                const recordBtnOld = document.getElementById('recordBtnOld');
+                const recordingStatusEl = document.getElementById('recordingStatus');
+
+                const startMicRecordingBtn = document.getElementById('startMicRecording');
+                console.log('startMicRecordingBtn element:', startMicRecordingBtn);
+
+                // --- Global Variables ---
+                let mediaRecorder;
+                let audioChunks = [];
+                let isRecording = false;
+                let currentTaskId = null;
+                let statusCheckInterval = null;
+                let currentConversionId = null;
+                let conversionStatusInterval = null;
+                let settingsModalInstance = null; // For Bootstrap modal instance
+
+                // --- Utility Functions (like showNotification) should be defined early ---
+                function showNotification(message, type = 'success') {
+                    const container = document.getElementById('notificationContainer');
+                    if (!container) {
+                        console.error('Notification container not found!');
+                        alert(message); // Fallback
+                        return;
+                    }
+                    const alertId = 'notification-' + Date.now();
+                    const alertHtml = `
+                        <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show m-2" role="alert" style="min-width: 250px; max-width: 400px;">
+                            ${message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('beforeend', alertHtml);
+                    const alertElement = document.getElementById(alertId);
+                    setTimeout(() => {
+                        if (alertElement) {
+                            const bsAlertInstance = bootstrap.Alert.getInstance(alertElement);
+                            if (bsAlertInstance) {
+                                bsAlertInstance.close();
+                            } else {
+                                alertElement.classList.remove('show');
+                                setTimeout(() => alertElement.remove(), 150);
+                            }
+                        }
+                    }, 3500);
+                }
+
+                // --- Initial Setup ---
+                if (settingsModalEl) {
+                    settingsModalInstance = new bootstrap.Modal(settingsModalEl);
+                } else {
+                    console.error("Settings Modal element not found for Bootstrap initialization!");
+                }
+                loadSettings(); // Will now use Modal IDs
+                checkInitialApiSettings(); // Will now use Modal
+                loadTasksFromApi();
+
+                // --- Event Listeners ---
+                importFileBtn.addEventListener('click', () => audioFileEl.click());
+                audioFileEl.addEventListener('change', handleFileUpload);
+                searchInput.addEventListener('input', debounce(handleSearch, 300));
+                
+                if (startMicRecordingBtn) {
+                    startMicRecordingBtn.addEventListener('click', function(event) { 
+                        event.preventDefault(); 
+                        console.log('Start Mic Recording button clicked');
+                        startMicRecording();
+                    });
+                } else {
+                    console.error('Could not find startMicRecordingBtn to attach event listener.');
+                }
+
+                settingsBtnFab.addEventListener('click', () => {
+                    if (settingsModalInstance) {
+                        settingsModalInstance.show();
+                    } else {
+                        console.error("Cannot show settings modal, instance not available.");
+                    }
+                });
+
+                if (saveSettingsBtnModal) saveSettingsBtnModal.addEventListener('click', saveSettings); // Uses Modal IDs
+                if (testApiBtnModal) testApiBtnModal.addEventListener('click', testApiConnection); // Uses Modal IDs
+                if (cleanFilesBtnModal) cleanFilesBtnModal.addEventListener('click', cleanAllTempFiles);
+                
+                copyBtn.addEventListener('click', copyResultText);
+                clearBtn.addEventListener('click', () => {
+                    resultEl.textContent = '点击文件列表中的任务查看结果或进度';
+                    if (taskInfoBox.style.display === 'none' || taskInfoBox.style.display === '') {
+                         detailsContainer.style.display = 'none';
+                    }
+                });
+                dismissBtn.addEventListener('click', hideTaskInfoBox);
+
+                // --- Core Functions ---
+                function debounce(func, delay) {
+                    let timeout;
+                    return function(...args) {
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => func.apply(this, args), delay);
+                    };
+                }
+
+                function formatDuration(seconds) {
+                    if (isNaN(seconds) || seconds < 0) return "00:00";
+                    const h = Math.floor(seconds / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    const s = Math.floor(seconds % 60);
+                    if (h > 0) {
+                        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                    }
+                    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                }
+
+                function formatDate(timestamp) {
+                    if (!timestamp) return "未知时间";
+                    try {
+                        const date = new Date(timestamp * 1000); // Assuming timestamp is in seconds
+                        return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    } catch (e) {
+                        return "日期无效";
+                    }
+                }
+                
+                function handleFileUpload() {
+                    if (!audioFileEl.files.length) return;
+                    const file = audioFileEl.files[0];
+                    resultEl.textContent = '检查文件格式...';
+                    detailsContainer.style.display = 'block'; // Show details area
+                    taskInfoBox.style.display = 'none'; // Hide previous task info
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    fetch('/api/upload-check', { method: 'POST', body: formData })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                showErrorInResultBox(data.error);
+                                return;
+                            }
+                            currentConversionId = data.conversion_id; // Store for potential conversion
+                            if (data.needs_conversion) {
+                                showFileConversionDialog(data, file.name);
+                            } else {
+                                // No conversion needed, directly proceed to transcription
+                                const transcribeFormData = new FormData();
+                                transcribeFormData.append('audio', file);
+                                // Common params for uploadAudio will be added there
+                                uploadAudio(transcribeFormData, file.name, data.is_video ? 'video' : 'audio');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('文件格式检查失败:', error);
+                            showErrorInResultBox('检查文件格式时出错');
+                        });
+                }
+
+                function showFileConversionDialog(checkData, fileName) {
+                    // Clear previous conversion interval if any
+                    if (conversionStatusInterval) clearInterval(conversionStatusInterval);
+
+                    let modalHTML = `
+                        <div class="modal fade" id="conversionModal" tabindex="-1" aria-labelledby="conversionModalLabel" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="conversionModalLabel">文件需要转换</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>检测到您上传的是 <strong>${checkData.is_video ? '视频' : '音频'}</strong> 文件，需要${checkData.is_video ? '提取音频' : '转换格式'}才能进行识别。</p>
+                                        <p>文件名: <strong>${fileName}</strong></p>
+                                        <div id="conversionProgressUI" style="display: none;">
+                                            <p id="conversionMessageEl">准备转换...</p>
+                                            <div class="progress mb-3">
+                                                <div id="conversionProgressBarEl" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                        </div>
+                                        <div id="conversionErrorEl" class="alert alert-danger" style="display: none;"></div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelConversionBtn">取消</button>
+                                        <button type="button" class="btn btn-primary" id="startConversionBtnModal">开始转换</button>
+                                        <button type="button" class="btn btn-success" id="completeConversionBtnModal" style="display: none;">使用转换后的文件</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                    const conversionModal = new bootstrap.Modal(document.getElementById('conversionModal'));
+                    conversionModal.show();
+
+                    const modalInstance = document.getElementById('conversionModal');
+                    const startBtn = modalInstance.querySelector('#startConversionBtnModal');
+                    const completeBtn = modalInstance.querySelector('#completeConversionBtnModal');
+                    const progressUI = modalInstance.querySelector('#conversionProgressUI');
+                    const progressBar = modalInstance.querySelector('#conversionProgressBarEl');
+                    const progressMsg = modalInstance.querySelector('#conversionMessageEl');
+                    const errorMsgEl = modalInstance.querySelector('#conversionErrorEl');
+                    
+                    currentConversionId = checkData.conversion_id; // Ensure it's set
+
+                    startBtn.onclick = () => {
+                        progressUI.style.display = 'block';
+                        startBtn.disabled = true;
+                        errorMsgEl.style.display = 'none';
+
+                        fetch(`/api/convert-file/${currentConversionId}`, { method: 'POST' })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.error) {
+                                    errorMsgEl.textContent = data.error;
+                                    errorMsgEl.style.display = 'block';
+                                    startBtn.disabled = false;
+                                    return;
+                                }
+                                conversionStatusInterval = setInterval(() => checkConversionStatus(currentConversionId, progressBar, progressMsg, errorMsgEl, startBtn, completeBtn), 1000);
+                            })
+                            .catch(err => {
+                                console.error('启动转换失败:', err);
+                                errorMsgEl.textContent = '启动转换失败，请重试';
+                                errorMsgEl.style.display = 'block';
+                                startBtn.disabled = false;
+                            });
+                    };
+
+                    completeBtn.onclick = () => {
+                        const userApiKey = localStorage.getItem('azureSpeechApiKey');
+                        const userApiRegion = localStorage.getItem('azureSpeechApiRegion');
+                        if (!userApiKey || !userApiRegion) {
+                            alert('请先在设置中配置Azure API密钥和区域。');
+                            conversionModal.hide();
+                            settingsModalInstance.show();
+                            detailsContainer.style.display = 'block';
+                            return;
+                        }
+
+                        const requestData = {
+                            language: languageModalEl.value,
+                            api_key: userApiKey,
+                            api_region: userApiRegion,
+                            parallel_threads: parallelThreadsModalEl.value,
+                            segment_length: segmentLengthModalEl.value
+                        };
+
+                        const now = new Date();
+                        // 使用toLocaleString方法显式获取本地时间的各个组成部分
+                        const localYear = now.getFullYear();
+                        const localMonth = now.getMonth() + 1; // 月份是从0开始的
+                        const localDate = now.getDate();
+                        const localHours = now.getHours();
+                        const localMinutes = now.getMinutes();
+                        const localSeconds = now.getSeconds();
+                        
+                        // 格式化成所需的字符串
+                        const formattedBrowserTime = `${localYear}-${String(localMonth).padStart(2, '0')}-${String(localDate).padStart(2, '0')}-` +
+                                                 `${String(localHours).padStart(2, '0')}-${String(localMinutes).padStart(2, '0')}-${String(localSeconds).padStart(2, '0')}`;
+                        // 打印时间信息到控制台以便调试
+                        console.log(`本地时间: ${now.toLocaleString()}, 格式化后: ${formattedBrowserTime}`);
+                        requestData.formatted_browser_time = formattedBrowserTime;
+
+                        fetch(`/api/complete-conversion/${currentConversionId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestData)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            conversionModal.hide();
+                            if (data.error) {
+                                showErrorInResultBox(data.code === 'NO_API_SETTINGS' ? '请先设置API密钥和区域。' : data.error);
+                                if(data.code === 'NO_API_SETTINGS') settingsModalInstance.show();
+                                return;
+                            }
+                            currentTaskId = data.task_id;
+                            showTaskProcessing(data.task_id, data.original_filename || fileName, data.file_type || 'audio', data.original_duration);
+                            startStatusCheck(data.task_id);
+                            loadTasksFromApi(); // Refresh list
+                        })
+                        .catch(err => {
+                            conversionModal.hide();
+                            console.error('完成转换请求失败:', err);
+                            showErrorInResultBox('完成转换失败，请重试。');
+                        });
+                    };
+                    
+                    modalInstance.addEventListener('hidden.bs.modal', () => {
+                        clearInterval(conversionStatusInterval);
+                        modalInstance.remove();
+                    });
+                }
+
+                function checkConversionStatus(conversionId, progressBar, progressMsg, errorMsgEl, startBtn, completeBtn) {
+                     if (!conversionId) {
+                        console.warn("checkConversionStatus called with no conversionId");
+                        clearInterval(conversionStatusInterval); // Stop if no ID
+                    return;
+                }
+                    fetch(`/api/conversion-status/${conversionId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                clearInterval(conversionStatusInterval);
+                                errorMsgEl.textContent = `转换状态检查错误: ${data.error}`;
+                                errorMsgEl.style.display = 'block';
+                                return;
+                            }
+                            progressBar.style.width = `${data.progress}%`;
+                            progressBar.setAttribute('aria-valuenow', data.progress);
+                            progressMsg.textContent = data.message || '转换中...';
+
+                            if (data.status === 'completed') {
+                                clearInterval(conversionStatusInterval);
+                                startBtn.style.display = 'none';
+                                completeBtn.style.display = 'block';
+                                progressMsg.textContent = '转换完成，可以开始识别。';
+                            } else if (data.status === 'failed') {
+                                clearInterval(conversionStatusInterval);
+                                errorMsgEl.textContent = data.message || '转换失败。';
+                                errorMsgEl.style.display = 'block';
+                                startBtn.style.display = 'block';
+                                startBtn.disabled = false; // Allow retry
+                            }
+                        })
+                        .catch(err => {
+                            console.error('检查转换状态失败:', err);
+                            // Don't stop interval on network error, might recover
+                        });
+                }
+                
+                function uploadAudio(formData, fileName, fileType) {
+                    // This function is now for files that DO NOT need conversion OR for microphone audio
+                    resultEl.textContent = '上传中...';
+                    detailsContainer.style.display = 'block';
+                    taskInfoBox.style.display = 'block';
+
+
+                    const userApiKey = localStorage.getItem('azureSpeechApiKey');
+                    const userApiRegion = localStorage.getItem('azureSpeechApiRegion');
+                    if (!userApiKey || !userApiRegion) {
+                        alert('请先在设置中配置Azure API密钥和区域。');
+                        settingsModalInstance.show();
+                        resultEl.textContent = '错误：API设置未完成。';
+                        return;
+                    }
+                    
+                    // 添加当前浏览器时间
+                    const now = new Date();
+                    const localYear = now.getFullYear();
+                    const localMonth = now.getMonth() + 1; // 月份是从0开始的
+                    const localDate = now.getDate();
+                    const localHours = now.getHours();
+                    const localMinutes = now.getMinutes();
+                    const localSeconds = now.getSeconds();
+                    
+                    // 格式化成所需的字符串
+                    const formattedBrowserTime = `${localYear}-${String(localMonth).padStart(2, '0')}-${String(localDate).padStart(2, '0')}-` +
+                                             `${String(localHours).padStart(2, '0')}-${String(localMinutes).padStart(2, '0')}-${String(localSeconds).padStart(2, '0')}`;
+                    console.log(`上传文件时的本地时间: ${now.toLocaleString()}, 格式化后: ${formattedBrowserTime}`);
+                    
+                    formData.append('api_key', userApiKey);
+                    formData.append('api_region', userApiRegion);
+                    formData.append('language', languageModalEl.value);
+                    formData.append('parallel_threads', parallelThreadsModalEl.value);
+                    formData.append('segment_length', segmentLengthModalEl.value);
+                    formData.append('formatted_browser_time', formattedBrowserTime);
+                    // original_duration is added in /api/transcribe if not a conversion flow
+
+                    fetch('/api/transcribe', { method: 'POST', body: formData })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                showErrorInTaskBox(data.code === 'NO_API_SETTINGS' ? '请先设置API密钥和区域。' : data.error, fileName, fileType);
+                                if(data.code === 'NO_API_SETTINGS') settingsModalInstance.show();
+                                return;
+                            }
+                            if (data.task_id) {
+                                currentTaskId = data.task_id;
+                                // Duration might be in data if direct upload, or known from conversion
+                                showTaskProcessing(data.task_id, fileName, fileType, data.original_duration); 
+                                startStatusCheck(data.task_id);
+                                loadTasksFromApi(); // Refresh list
+                            }
+                            if(recordingStatusEl) recordingStatusEl.textContent = '点击开始录音';
+                        })
+                        .catch(error => {
+                            console.error('上传失败:', error);
+                            showErrorInTaskBox('上传或识别过程中出错', fileName, fileType);
+                             if(recordingStatusEl) recordingStatusEl.textContent = '点击开始录音';
+                        });
+                }
+                
+                function startMicRecording() {
+                    console.log('startMicRecording function called. isRecording:', isRecording);
+                    if (isRecording) { // Stop if already recording
+                        stopMicRecording();
+                        return;
+                    }
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                            console.log('getUserMedia success');
+                        mediaRecorder = new MediaRecorder(stream);
+                        mediaRecorder.start();
+                        isRecording = true;
+                        audioChunks = [];
+                            mediaRecorder.addEventListener('dataavailable', event => audioChunks.push(event.data));
+                        mediaRecorder.addEventListener('stop', () => {
+                                console.log('mediaRecorder stopped, processing audio.');
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                            const formData = new FormData();
+                                formData.append('audio', audioBlob, 'microphone-recording.wav');
+                                // Language and other params will be added in uploadAudio
+                            uploadAudio(formData, '麦克风录音', 'audio');
+                        });
+                            startMicRecordingBtn.innerHTML = '<i class="fas fa-stop"></i> 停止录音';
+                            if(recordingStatusEl) recordingStatusEl.textContent = '正在录音...';
+                    })
+                    .catch(error => {
+                        console.error('获取麦克风失败:', error);
+                            alert('无法访问麦克风，请检查权限设置。');
+                    });
+            }
+            
+                function stopMicRecording() {
+                    console.log('stopMicRecording function called.');
+                if (mediaRecorder && isRecording) {
+                    mediaRecorder.stop();
+                    isRecording = false;
+                        startMicRecordingBtn.innerHTML = '<i class="fas fa-microphone"></i> 开始录音';
+                        if(recordingStatusEl) recordingStatusEl.textContent = '处理中...';
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+            }
+            
+                function handleSearch() {
+                    const query = searchInput.value.trim();
+                    console.log('handleSearch called. Query:', query);
+                    if (query.length > 0) {
+                        fetch(`/api/tasks/search?q=${encodeURIComponent(query)}`)
+                            .then(response => {
+                                console.log('Search fetch response status:', response.status);
+                                return response.json();
+                            })
+                .then(data => {
+                                console.log('Search fetch data:', data);
+                                renderTaskList(data);
+                            })
+                            .catch(error => console.error('搜索失败:', error));
+                        } else {
+                        loadTasksFromApi(); // Load all if search is cleared
+                    }
+                }
+                
+                function loadTasksFromApi(showTaskId = null) {
+                    fetch('/api/tasks')
+                        .then(response => response.json())
+                        .then(tasks => {
+                            renderTaskList(tasks);
+                            if (showTaskId) { // If a specific task needs to be focused (e.g., after creation)
+                                const task = tasks.find(t => t.id === showTaskId);
+                                if (task) displayTaskDetails(task);
+                            }
+                })
+                .catch(error => {
+                            console.error('获取任务列表失败:', error);
+                            taskListEl.innerHTML = '<div class="text-danger p-3">加载任务列表失败</div>';
+                        });
+                }
+
+                function renderTaskList(tasks) {
+                    taskListEl.innerHTML = ''; // Clear existing list
+                    if (!tasks || tasks.length === 0) {
+                        taskListEl.innerHTML = '<div class="text-muted p-3 text-center">没有任务记录</div>';
+                        return;
+                    }
+                    tasks.forEach(task => {
+                        const item = document.createElement('div');
+                        item.className = 'file-item';
+                        item.dataset.taskId = task.id;
+
+                        // Store full task object for easier access later
+                        item.dataset.taskInfo = JSON.stringify(task); 
+
+                        let statusIconClass = 'fas ';
+                        let statusIconColorClass = '';
+                        if (task.status === 'completed') {
+                            statusIconClass += 'fa-check-circle';
+                            statusIconColorClass = 'completed';
+                        } else if (task.status === 'failed') {
+                            statusIconClass += 'fa-times-circle';
+                            statusIconColorClass = 'failed';
+                        } else { // processing or pending
+                            statusIconClass += 'fa-spinner fa-spin'; // Use Bootstrap's spin or add custom animation
+                            statusIconColorClass = 'processing';
+                        }
+
+                        item.innerHTML = `
+                            <div>
+                                <div class="file-name">${task.file_name || '未知文件'}</div>
+                                <div class="file-summary">暂无摘要 <span class="badge bg-light text-dark ms-1">${task.language || ''}</span></div>
+                            </div>
+                            <div class="file-time">${formatDate(task.created_at)}</div>
+                            <div class="file-duration">${formatDuration(task.original_duration)}</div>
+                            <div class="file-actions">
+                                ${task.status === 'completed' ? `<button class="btn btn-sm btn-outline-secondary download-txt-btn" title="下载TXT"><i class="fas fa-download"></i> TXT</button>` : ''}
+                                ${(task.status === 'completed' && task.processed_audio_file) ? `<button class="btn btn-sm btn-outline-info download-audio-btn" title="下载音频"><i class="fas fa-file-audio"></i> WAV</button>` : ''}
+                                <button class="btn btn-sm btn-outline-danger delete-task-btn" title="删除任务"><i class="fas fa-trash"></i></button>
+                            </div>
+                            <div class="status-icon ${statusIconColorClass}"><i class="${statusIconClass}"></i></div>
+                        `;
+                        item.querySelector('.file-name').addEventListener('click', () => displayTaskDetails(task));
+                        
+                        if(task.status === 'completed'){
+                            const downloadTxtBtn = item.querySelector('.download-txt-btn');
+                            if(downloadTxtBtn) downloadTxtBtn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                generateAndDownloadTxtFile(task.id, task.file_name);
+                            });
+
+                            const downloadAudioBtn = item.querySelector('.download-audio-btn');
+                            if(downloadAudioBtn && task.processed_audio_file) { // Ensure processed_audio_file exists
+                                downloadAudioBtn.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    downloadProcessedAudioFile(task.processed_audio_file, task.file_name);
+                                });
+                            }
+                        }
+                        const deleteBtn = item.querySelector('.delete-task-btn');
+                        if(deleteBtn) deleteBtn.addEventListener('click', (e) => {
+                             e.stopPropagation();
+                            showDeleteConfirmation(task.id, task.file_name);
+                        });
+
+                        taskListEl.appendChild(item);
+                    });
+                }
+                
+                function displayTaskDetails(task){
+                    detailsContainer.style.display = 'block';
+                    currentTaskId = task.id;
+                    if (task.status === 'completed') {
+                        showTaskCompleted(task.result || "没有识别结果。", task.file_name, task.file_type, task.original_duration);
+                        if(statusCheckInterval) clearInterval(statusCheckInterval);
+                    } else if (task.status === 'failed') {
+                        showErrorInTaskBox(task.result || '任务处理失败', task.file_name, task.file_type);
+                         if(statusCheckInterval) clearInterval(statusCheckInterval);
+                    } else { // Processing or other states
+                        showTaskProcessing(task.id, task.file_name, task.file_type, task.original_duration);
+                        checkTaskStatus(task.id); // Initial check
+                        startStatusCheck(task.id);
+                    }
+                }
+
+                function showTaskProcessing(taskId, fileName, fileType, duration) {
+                    detailsContainer.style.display = 'block';
+                    taskInfoBox.style.display = 'block';
+                    taskStatusEl.textContent = '处理中...';
+                    taskIdDisplayEl.textContent = `任务ID: ${taskId}`;
+                    fileInfoDisplayEl.innerHTML = `文件: ${fileName} (${formatDuration(duration)}) <span class="badge bg-secondary file-type-badge">${fileType === 'video' ? '视频' : '音频'}</span>`;
+                    progressBarEl.style.width = '0%';
+                    progressBarEl.setAttribute('aria-valuenow', 0);
+                    resultEl.textContent = (fileType === 'video' ? '视频处理中，正在提取音频...' : '音频处理中...') + '请耐心等待。';
+                }
+
+                function showTaskCompleted(resultText, fileName, fileType, duration) {
+                    detailsContainer.style.display = 'block';
+                    taskInfoBox.style.display = 'block';
+                    taskStatusEl.textContent = '识别完成!';
+                    taskIdDisplayEl.textContent = `任务ID: ${currentTaskId}`;
+                    fileInfoDisplayEl.innerHTML = `文件: ${fileName} (${formatDuration(duration)}) <span class="badge bg-secondary file-type-badge">${fileType === 'video' ? '视频' : '音频'}</span>`;
+                    progressBarEl.style.width = '100%';
+                    progressBarEl.setAttribute('aria-valuenow', 100);
+                    resultEl.textContent = resultText || "没有识别结果。";
+                }
+                
+                function showErrorInTaskBox(errorMsg, fileName, fileType, duration) {
+                    detailsContainer.style.display = 'block';
+                    taskInfoBox.style.display = 'block';
+                    taskStatusEl.textContent = `错误: ${errorMsg}`;
+                    taskIdDisplayEl.textContent = `任务ID: ${currentTaskId || '未知'}`;
+                     fileInfoDisplayEl.innerHTML = `文件: ${fileName || '未知'} (${formatDuration(duration)}) ${fileType ? `<span class="badge bg-secondary file-type-badge">${fileType === 'video' ? '视频' : '音频'}</span>` : ''}`;
+                    progressBarEl.style.width = '0%'; // Or 100% with danger color
+                    resultEl.textContent = `错误: ${errorMsg}`;
+                }
+                
+                function showErrorInResultBox(errorMsg){
+                    detailsContainer.style.display = 'block';
+                    taskInfoBox.style.display = 'none';
+                    resultEl.textContent = `错误: ${errorMsg}`;
+                }
+
+                function hideTaskInfoBox(){
+                    taskInfoBox.style.display = 'none';
+                    resultEl.textContent = '点击文件列表中的任务查看结果或进度';
+                    if(statusCheckInterval) clearInterval(statusCheckInterval);
+                    currentTaskId = null;
+                    // If task info is dismissed, and result is placeholder, hide details container
+                    if (resultEl.textContent === '点击文件列表中的任务查看结果或进度') {
+                        detailsContainer.style.display = 'none';
+                    }
+                }
+
+            function startStatusCheck(taskId) {
+                    if(statusCheckInterval) clearInterval(statusCheckInterval);
+                    statusCheckInterval = setInterval(() => checkTaskStatus(taskId), 2000); // Check every 2s
+                }
+
+                function checkTaskStatus(taskIdToCheck) {
+                    if (!taskIdToCheck) return;
+                    fetch(`/api/status/${taskIdToCheck}`)
+                    .then(response => response.json())
+                    .then(data => {
+                            if (!currentTaskId || currentTaskId !== taskIdToCheck) { // If user switched task view
+                                clearInterval(statusCheckInterval);
+                                return;
+                            }
+                            
+                            const fileName = data.file_info?.name || taskInfoBox.dataset.fileName || '未知文件';
+                            const fileType = data.file_info?.type || taskInfoBox.dataset.fileType || 'audio';
+                            const duration = data.file_info?.original_duration || taskInfoBox.dataset.duration || 0;
+
+                        if (data.progress !== undefined) {
+                                progressBarEl.style.width = `${data.progress}%`;
+                                progressBarEl.setAttribute('aria-valuenow', data.progress);
+                            }
+                            // resultEl.textContent = data.current_text || resultEl.textContent; // Avoid overwriting final result with partial
+                        
+                        if (data.status === 'completed' && data.result) {
+                                clearInterval(statusCheckInterval);
+                                if (data.result.status === 'success') {
+                                    showTaskCompleted(data.result.text, fileName, fileType, duration);
+                            } else {
+                                    showErrorInTaskBox(data.result.error || '识别失败', fileName, fileType, duration);
+                            }
+                                loadTasksFromApi(); // Refresh list as status changed
+                        } else if (data.status === 'failed') {
+                            clearInterval(statusCheckInterval);
+                                showErrorInTaskBox(data.error || '任务处理失败', fileName, fileType, duration);
+                                loadTasksFromApi(); // Refresh list
+                            } else if (data.status === 'processing') {
+                                // Update info if it's still the current task
+                                showTaskProcessing(taskIdToCheck, fileName, fileType, duration);
+                                 if (data.current_text && resultEl.textContent.startsWith("音频处理中") ) { // Only update if it's still placeholder
+                                    resultEl.textContent = data.current_text;
+                                }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('状态检查失败:', error);
+                            // clearInterval(statusCheckInterval); // Optionally stop on error
+                        });
+                }
+                
+                function generateAndDownloadTxtFile(txtTaskId, fileName) {
+                    resultEl.textContent = "正在生成文本文件...";
+                    fetch(`/api/generate-txt/${txtTaskId}`, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                const downloadLink = document.createElement('a');
+                                downloadLink.href = data.download_url;
+                                downloadLink.download = data.filename;
+                                document.body.appendChild(downloadLink);
+                                downloadLink.click();
+                                document.body.removeChild(downloadLink);
+                                resultEl.textContent = `已生成文本文件: ${data.filename}`;
+                            } else {
+                                resultEl.textContent = `生成文本文件失败: ${data.error || '未知错误'}`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('生成TXT请求失败:', error);
+                            resultEl.textContent = "生成TXT时出错";
+                        });
+                }
+
+                function downloadProcessedAudioFile(audioFilePath, originalTaskFileName) {
+                    // audioFilePath is expected to be like "audio/somefile.wav"
+                    // originalTaskFileName is used to suggest a download name for the user that matches the task.
+                    console.log(`Requesting download for audio: ${audioFilePath}`);
+                    const downloadUrl = `/api/download/${audioFilePath}`;
+
+                    // Extract the base name from the original task file name and append .wav
+                    // This provides a more user-friendly download name than the potentially timestamped one.
+                    let suggestedDownloadName = 'processed_audio.wav'; // Fallback
+                    if (originalTaskFileName) {
+                        const baseName = originalTaskFileName.substring(0, originalTaskFileName.lastIndexOf('.')) || originalTaskFileName;
+                        suggestedDownloadName = `${baseName}_processed.wav`;
+                    }
+                    
+                    const link = document.createElement('a');
+                    link.href = downloadUrl;
+                    link.download = suggestedDownloadName; // Suggest a filename for the download
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showNotification('开始下载处理后的音频文件...', 'info');
+                }
+
+                function showDeleteConfirmation(delTaskId, fileName) {
+                    let modalHTML = `
+                    <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">确认删除</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>确定要删除任务 "${fileName}" 吗？此操作不可撤销。</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                    <button type="button" class="btn btn-danger" id="confirmDeleteBtnModal">删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                    const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+                    deleteModal.show();
+
+                    const modalInstance = document.getElementById('deleteConfirmModal');
+                    const confirmDeleteBtn = modalInstance.querySelector('#confirmDeleteBtnModal');
+                    
+                    // Clone and replace the button to remove previous event listeners
+                    const newConfirmDeleteBtn = confirmDeleteBtn.cloneNode(true);
+                    confirmDeleteBtn.parentNode.replaceChild(newConfirmDeleteBtn, confirmDeleteBtn);
+
+                    newConfirmDeleteBtn.onclick = () => {
+                        // Directly call deleteTask, it will handle the API call.
+                        // The modal should be closed after the API call attempt.
+                        deleteTask(delTaskId, deleteModal); // Pass modal instance to deleteTask
+                    };
+                    modalInstance.addEventListener('hidden.bs.modal', () => modalInstance.remove());
+                }
+
+                function deleteTask(taskId, modalInstanceToClose) { // Added modalInstanceToClose parameter
+                    // Removed the if(confirm(...)) wrapper as confirmation is handled by the modal
+                    try {
+                        fetch(`/api/delete-task/${taskId}`, {
+                            method: 'DELETE',
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(errData => {
+                                    throw new Error(errData.message || `服务器错误: ${response.status}`);
+                                }).catch(() => {
+                                    throw new Error(`服务器错误: ${response.status}`);
+                                });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.status === 'success') {
+                                showNotification(data.message || "任务已删除。", "success");
+                                loadTasksFromApi();
+                                if (currentTaskId === taskId) hideTaskInfoBox();
+                            } else {
+                                showNotification(data.message || "删除任务失败。", "danger");
+                            }
+                    })
+                    .catch(error => {
+                            console.error('删除任务时出错:', error);
+                            showNotification(error.message || "删除任务时发生网络错误或服务器错误。", "danger");
+                        })
+                        .finally(() => {
+                            if (modalInstanceToClose) {
+                                modalInstanceToClose.hide(); // Hide the modal after operation
+                            }
+                        });
+                    } catch (error) {
+                        console.error('删除任务时发生意外错误:', error);
+                        showNotification("删除任务时发生意外错误。", "danger");
+                        if (modalInstanceToClose) {
+                            modalInstanceToClose.hide(); // Also hide on unexpected sync error
+                        }
+                    }
+                }
+                
+                // --- Settings Functions ---
+                function loadSettings() {
+                    apiKeyModalEl.value = localStorage.getItem('azureSpeechApiKey') || '';
+                    apiRegionModalEl.value = localStorage.getItem('azureSpeechApiRegion') || '';
+                    parallelThreadsModalEl.value = localStorage.getItem('parallelThreads') || '10';
+                    segmentLengthModalEl.value = localStorage.getItem('segmentLength') || '60';
+                    languageModalEl.value = localStorage.getItem('selectedLanguage') || 'ja-JP';
+                }
+
+                function saveSettings() {
+                    const key = apiKeyModalEl.value.trim();
+                    const region = apiRegionModalEl.value;
+                    if (!key || !region) {
+                        showNotification('API密钥和区域不能为空。', 'warning');
+                        return false;
+                    }
+                    if (key.includes(' ') || key.length < 10) {
+                        showNotification('API密钥格式不正确。', 'warning');
+                        return false;
+                    }
+                     if (region.includes(' ') || !/^[a-z0-9-]+$/.test(region)) {
+                        showNotification('区域格式不正确。', 'warning');
+                        return false;
+                    }
+
+                    localStorage.setItem('azureSpeechApiKey', key);
+                    localStorage.setItem('azureSpeechApiRegion', region);
+                    localStorage.setItem('parallelThreads', parallelThreadsModalEl.value);
+                    localStorage.setItem('segmentLength', segmentLengthModalEl.value);
+                    localStorage.setItem('selectedLanguage', languageModalEl.value);
+                    showNotification('设置已保存。');
+                    
+                    if (settingsModalInstance) settingsModalInstance.hide();
+                    
+                    // updateApiStatus(); // Not currently used
+                    return true;
+                }
+                
+                function checkInitialApiSettings() {
+                    if (!localStorage.getItem('azureSpeechApiKey') || !localStorage.getItem('azureSpeechApiRegion')) {
+                        if (settingsModalInstance) {
+                             settingsModalInstance.show();
+                             if (!document.getElementById('welcomeAlertModal')) { 
+                                const welcomeAlert = `<div id="welcomeAlertModal" class="alert alert-info alert-dismissible fade show">欢迎使用！请先在设置中配置您的Azure API密钥和区域。<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+                                settingsModalWelcomeAlertContainer.innerHTML = welcomeAlert;
+                            }
+                        } else {
+                            console.error("Settings modal instance not available to show for initial setup.");
+                        }
+                    }
+                }
+
+                function testApiConnection() {
+                    const key = apiKeyModalEl.value.trim();
+                    const region = apiRegionModalEl.value;
+                    if (!key || !region) {
+                        apiTestResultModalEl.innerHTML = '<div class="alert alert-warning alert-dismissible fade show">请填写API密钥和区域。<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>';
+                    return;
+                }
+                    apiTestResultModalEl.innerHTML = '<div class="alert alert-info">测试连接中...</div>';
+                const formData = new FormData();
+                    formData.append('api_key', key);
+                    formData.append('api_region', region);
+                
+                    fetch('/api/test-connection', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                            apiTestResultModalEl.innerHTML = `<div class="alert alert-success alert-dismissible fade show">${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+                    } else if (data.code === 'NO_API_SETTINGS' || (data.details && data.details.includes("SPXERR_INVALID_HEADER"))) {
+                        apiTestResultModalEl.innerHTML = `<div class="alert alert-warning alert-dismissible fade show">${data.error}<br><small>${data.details || ''}</small><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+                    } else {
+                        apiTestResultModalEl.innerHTML = `<div class="alert alert-danger alert-dismissible fade show">测试失败: ${data.error}<br><small>${data.details || ''}</small><button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+                    }
+                })
+                .catch(error => {
+                        apiTestResultModalEl.innerHTML = `<div class="alert alert-danger alert-dismissible fade show">测试请求失败: ${error}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+                    });
+                }
+                
+                function copyResultText(){
+                    const textToCopy = resultEl.textContent;
+                    const alertElement = document.createElement('div');
+                    alertElement.className = 'alert alert-success alert-dismissible fade show';
+                    alertElement.textContent = textToCopy;
+                    alertElement.role = 'alert';
+                    document.body.appendChild(alertElement);
+                    
+                    setTimeout(() => {
+                        if (alertElement) {
+                            // Trigger Bootstrap's dismiss programmatically which handles fade out
+                            const bsAlertInstance = bootstrap.Alert.getInstance(alertElement);
+                            if (bsAlertInstance) {
+                                bsAlertInstance.close();
+                            } else {
+                                // Fallback if instance not found (e.g., element already being removed by user click)
+                                alertElement.classList.remove('show');
+                                setTimeout(() => alertElement.remove(), 150); // Match Bootstrap fade duration
+                            }
+                        }
+                    }, 3500); // Auto-dismiss after 3.5 seconds
+                }
+
+                // 清除临时文件的函数
+                function cleanAllTempFiles() {
+                    if (!confirm('确定要清除所有临时文件和上传文件吗？此操作不会影响已完成的转写记录。')) {
+                        return;
+                    }
+                    
+                    cleanFilesBtnModal.disabled = true;
+                    cleanFilesBtnModal.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 清理中...';
+                    
+                    fetch('/api/clean-files', {
+                        method: 'POST',
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showNotification(data.message || "清理完成！", "success");
+                        } else {
+                            showNotification(data.message || "清理失败", "danger");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('清理文件失败:', error);
+                        showNotification("清理文件时发生错误。", "danger");
+                    })
+                    .finally(() => {
+                        cleanFilesBtnModal.disabled = false;
+                        cleanFilesBtnModal.innerHTML = '清除临时文件';
+                    });
+                }
+
+            } catch (e) {
+                console.error('Error during initial script setup (DOM references or early event listeners):', e);
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+</body>
+</html> 

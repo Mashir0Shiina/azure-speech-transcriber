@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Flask
+instance/
+.webassets-cache
+
+# Redis
+dump.rdb
+
+# 项目特定文件
+uploads/
+downloads/
+!downloads/.gitkeep
+!uploads/.gitkeep
+*.wav
+*.mp3
+*.mp4
+*.ogg
+*.flac
+temp_*
+*.log
+
+# 环境文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# VS Code
+.vscode/
+.idea/
+*.sublime-*
+
+# Docker
+.dockerignore 
