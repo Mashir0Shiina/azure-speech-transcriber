@@ -8,7 +8,6 @@ env/
 build/
 develop-eggs/
 dist/
-downloads/
 eggs/
 .eggs/
 lib/
@@ -28,10 +27,19 @@ instance/
 dump.rdb
 
 # 项目特定文件
-uploads/
-downloads/
-!downloads/.gitkeep
+uploads/*
 !uploads/.gitkeep
+downloads/*
+!downloads/.gitkeep
+!uploads/source_files/
+uploads/source_files/*
+!uploads/source_files/.gitkeep
+!downloads/audio/
+downloads/audio/*
+!downloads/audio/.gitkeep
+!downloads/text/
+downloads/text/*
+!downloads/text/.gitkeep
 *.wav
 *.mp3
 *.mp4
