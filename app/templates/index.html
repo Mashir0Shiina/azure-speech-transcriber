@@ -219,15 +219,15 @@
     <div class="top-bar">
         <div class="top-bar-left">
             <div class="btn-group">
-                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="startRecordDropdown">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="startRecordDropdown" data-i18n="start-recording">
                     <i class="fas fa-microphone"></i> 开始录音
             </button>
                 <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#" id="startMicRecording">麦克风录音</a></li>
+                    <li><a class="dropdown-item" href="#" id="startMicRecording" data-i18n="mic-recording">麦克风录音</a></li>
                     <!-- <li><a class="dropdown-item" href="#">屏幕录制</a></li> -->
                 </ul>
                 </div>
-            <button class="btn btn-outline-primary" id="importFileBtn">
+            <button class="btn btn-outline-primary" id="importFileBtn" data-i18n="import-file">
                 <i class="fas fa-upload"></i> 导入文件
             </button>
             <input type="file" id="audioFile" accept="audio/*,video/*">
@@ -235,7 +235,17 @@
         <div class="top-bar-right">
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" class="form-control" id="searchInput" placeholder="搜索">
+                <input type="text" class="form-control" id="searchInput" data-i18n="placeholder:search-placeholder" placeholder="搜索">
+            </div>
+            <div class="dropdown mx-2">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="languageSelector" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-globe"></i>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="languageSelector">
+                    <li><a class="dropdown-item language-option" href="#" data-lang="zh-CN">中文 (简体)</a></li>
+                    <li><a class="dropdown-item language-option" href="#" data-lang="en-US">English</a></li>
+                    <li><a class="dropdown-item language-option" href="#" data-lang="ja-JP">日本語</a></li>
+                </ul>
             </div>
              <button id="settingsBtnFab" class="btn btn-light"> <!-- 将原设置按钮移到此处 -->
                 <i class="fas fa-cog"></i>
@@ -246,11 +256,11 @@
     <div class="main-content">
         <div class="filter-bar">
             <div class="dropdown">
-                <button class="btn dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="btn dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false" data-i18n="all-files">
                     全部文件
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="filterDropdown">
-                    <li><a class="dropdown-item active" href="#">全部文件</a></li>
+                    <li><a class="dropdown-item active" href="#" data-i18n="all-files">全部文件</a></li>
                     <!-- <li><a class="dropdown-item" href="#">音频</a></li>
                     <li><a class="dropdown-item" href="#">视频</a></li>
                     <li><a class="dropdown-item" href="#">收藏</a></li> -->
@@ -262,29 +272,14 @@
         <!-- Ad Banner Removed -->
         
         <div class="file-list-header">
-            <div>文件</div>
-            <div>操作时间</div>
-            <div>时长</div>
-            <div>操作</div>
-            <div>状态</div>
+            <div data-i18n="file-header">文件</div>
+            <div data-i18n="operation-time">操作时间</div>
+            <div data-i18n="duration">时长</div>
+            <div data-i18n="actions">操作</div>
+            <div data-i18n="status">状态</div>
         </div>
         <div id="taskList" class="file-list">
             <!-- 文件列表项将由JS动态生成 -->
-            <!-- 示例：
-            <div class="file-item">
-                <div>
-                    <div class="file-name">示例文件名.mp4</div>
-                    <div class="file-summary">暂无摘要</div>
-                </div>
-                <div class="file-time">2023/08/15 10:30</div>
-                <div class="file-duration">00:15:32</div>
-                <div class="file-actions">
-                    <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-download"></i></button>
-                    <button class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
-                </div>
-                <div class="status-icon completed"><i class="fas fa-check-circle"></i></div>
-            </div>
-            -->
         </div>
     </div>
 
@@ -295,7 +290,7 @@
         <!-- Task status information -->
         <div id="taskInfo" class="task-info-box" style="display:none;">
             <div class="d-flex justify-content-between">
-                <span id="taskStatus">处理中...</span>
+                <span id="taskStatus" data-i18n="processing">处理中...</span>
                 <button id="dismissBtn" class="btn-close" aria-label="关闭"></button>
                 </div>
             <div id="taskIdDisplay" class="small text-muted mt-1"></div>
@@ -305,14 +300,14 @@
             </div>
         </div>
         
-                <div class="mb-3">
-            <label class="form-label">识别结果</label>
-            <div class="result-box" id="result">点击文件列表中的任务查看结果或进度</div>
-                </div>
+        <div class="mb-3">
+            <label class="form-label" data-i18n="recognition-result">识别结果</label>
+            <div class="result-box" id="result" data-i18n="click-to-view">点击文件列表中的任务查看结果或进度</div>
+        </div>
         
         <div class="text-center mt-4">
-            <button id="copyBtn" class="btn btn-secondary me-2">复制结果</button>
-            <button id="clearBtn" class="btn btn-outline-danger">清空结果区</button>
+            <button id="copyBtn" class="btn btn-secondary me-2" data-i18n="copy-result">复制结果</button>
+            <button id="clearBtn" class="btn btn-outline-danger" data-i18n="clear-result">清空结果区</button>
         </div>
     </div>
         
@@ -321,13 +316,21 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="settingsModalLabel">设置</h5>
+                    <h5 class="modal-title" id="settingsModalLabel" data-i18n="settings">设置</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div id="settingsModalWelcomeAlertContainer"></div> <!-- For welcome alert -->
+                    <div class="mb-3">
+                        <label for="uiLanguageModal" class="form-label" data-i18n="language-selector">界面语言</label>
+                        <select id="uiLanguageModal" class="form-select">
+                            <option value="zh-CN">中文 (简体)</option>
+                            <option value="en-US">English</option>
+                            <option value="ja-JP">日本語</option>
+                        </select>
+                    </div>
                 <div class="mb-3">
-                        <label for="languageModal" class="form-label">识别语言 (对新任务生效)</label>
+                        <label for="languageModal" class="form-label" data-i18n="recognition-language">识别语言 (对新任务生效)</label>
                         <select id="languageModal" class="form-select">
                             <option value="zh-CN">中文 (简体)</option>
                             <option value="zh-HK">中文 (粤语/香港)</option>
@@ -345,13 +348,13 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="apiKeyModal" class="form-label">Azure Speech API 密钥</label>
+                        <label for="apiKeyModal" class="form-label" data-i18n="api-key">Azure Speech API 密钥</label>
                         <input type="password" class="form-control" id="apiKeyModal" placeholder="输入您的Azure Speech API密钥">
                     </div>
                     <div class="mb-3">
-                        <label for="apiRegionModal" class="form-label">Azure 区域</label>
+                        <label for="apiRegionModal" class="form-label" data-i18n="api-region">Azure 区域</label>
                         <select class="form-select" id="apiRegionModal">
-                        <option value="">-- 选择区域 --</option>
+                        <option value="" data-i18n="select-region">-- 选择区域 --</option>
                         <option value="eastasia">East Asia</option>
                         <option value="southeastasia">Southeast Asia</option>
                         <option value="eastus">East US</option>
@@ -377,20 +380,20 @@
                     </select>
                 </div>
                     <div class="mb-3">
-                        <label for="parallelThreadsModal" class="form-label">并行处理线程数</label>
+                        <label for="parallelThreadsModal" class="form-label" data-i18n="parallel-threads">并行处理线程数</label>
                         <input type="number" class="form-control" id="parallelThreadsModal" value="10" min="1" max="32">
                 </div>
                     <div class="mb-3">
-                        <label for="segmentLengthModal" class="form-label">音频分段长度 (秒)</label>
+                        <label for="segmentLengthModal" class="form-label" data-i18n="segment-length">音频分段长度 (秒)</label>
                         <input type="number" class="form-control" id="segmentLengthModal" value="60" min="30" max="900" step="30">
             </div>
                     <div id="apiTestResultModal" class="mt-2"></div>
         </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-danger me-auto" id="cleanFilesBtnModal">清除临时文件</button>
-                    <button type="button" class="btn btn-outline-secondary" id="testApiBtnModal">测试API连接</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="saveSettingsBtnModal">保存设置</button>
+                    <button type="button" class="btn btn-outline-danger me-auto" id="cleanFilesBtnModal" data-i18n="clean-temp">清除临时文件</button>
+                    <button type="button" class="btn btn-outline-secondary" id="testApiBtnModal" data-i18n="test-api">测试API连接</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">取消</button>
+                    <button type="button" class="btn btn-primary" id="saveSettingsBtnModal" data-i18n="save-settings">保存设置</button>
                 </div>
                             </div>
             </div>
@@ -404,6 +407,9 @@
             <p id="recordingStatus" class="text-center">点击开始录音</p>
         </div>
         
+    <!-- 引入多语言支持JS -->
+    <script src="/static/js/i18n.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOMContentLoaded event fired, script execution started.');
@@ -426,6 +432,7 @@
                 
                 const settingsBtnFab = document.getElementById('settingsBtnFab');
                 const settingsModalEl = document.getElementById('settingsModal');
+                const uiLanguageModalEl = document.getElementById('uiLanguageModal'); // 新增：界面语言选择器
                 const languageModalEl = document.getElementById('languageModal');
                 const apiKeyModalEl = document.getElementById('apiKeyModal');
                 const apiRegionModalEl = document.getElementById('apiRegionModal');
@@ -444,6 +451,9 @@
 
                 const startMicRecordingBtn = document.getElementById('startMicRecording');
                 console.log('startMicRecordingBtn element:', startMicRecordingBtn);
+                
+                // 语言相关元素
+                const languageSelectorOptions = document.querySelectorAll('.language-option');
 
                 // --- Global Variables ---
                 let mediaRecorder;
@@ -454,6 +464,36 @@
                 let currentConversionId = null;
                 let conversionStatusInterval = null;
                 let settingsModalInstance = null; // For Bootstrap modal instance
+
+                // --- 初始化多语言 ---
+                if (window.i18n) {
+                    // 初始化页面语言
+                    window.i18n.init();
+                    
+                    // 从localStorage加载界面语言设置
+                    if (uiLanguageModalEl) {
+                        uiLanguageModalEl.value = window.i18n.getCurrentLanguage();
+                    }
+                    
+                    // 语言切换事件监听
+                    languageSelectorOptions.forEach(option => {
+                        option.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const lang = this.getAttribute('data-lang');
+                            window.i18n.change(lang);
+                            if (uiLanguageModalEl) {
+                                uiLanguageModalEl.value = lang;
+                            }
+                        });
+                    });
+                    
+                    // 设置对话框中的语言选择
+                    if (uiLanguageModalEl) {
+                        uiLanguageModalEl.addEventListener('change', function() {
+                            window.i18n.change(this.value);
+                        });
+                    }
+                }
 
                 // --- Utility Functions (like showNotification) should be defined early ---
                 function showNotification(message, type = 'success') {
@@ -524,7 +564,7 @@
                 
                 copyBtn.addEventListener('click', copyResultText);
                 clearBtn.addEventListener('click', () => {
-                    resultEl.textContent = '点击文件列表中的任务查看结果或进度';
+                    resultEl.textContent = window.i18n ? window.i18n.get('click-to-view') : '点击文件列表中的任务查看结果或进度';
                     if (taskInfoBox.style.display === 'none' || taskInfoBox.style.display === '') {
                          detailsContainer.style.display = 'none';
                     }
@@ -552,10 +592,10 @@
                 }
 
                 function formatDate(timestamp) {
-                    if (!timestamp) return "未知时间";
+                    if (!timestamp) return window.i18n ? window.i18n.get('unknown-time') : "未知时间";
                     try {
                         const date = new Date(timestamp * 1000); // Assuming timestamp is in seconds
-                        return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                        return date.toLocaleString(window.i18n ? window.i18n.getCurrentLanguage() : 'zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                     } catch (e) {
                         return "日期无效";
                     }
@@ -912,7 +952,8 @@
                 function renderTaskList(tasks) {
                     taskListEl.innerHTML = ''; // Clear existing list
                     if (!tasks || tasks.length === 0) {
-                        taskListEl.innerHTML = '<div class="text-muted p-3 text-center">没有任务记录</div>';
+                        const noTasksText = window.i18n ? window.i18n.get('no-tasks') : '没有任务记录';
+                        taskListEl.innerHTML = `<div class="text-muted p-3 text-center">${noTasksText}</div>`;
                         return;
                     }
                     tasks.forEach(task => {
@@ -936,20 +977,26 @@
                             statusIconColorClass = 'processing';
                         }
 
+                        const noSummaryText = window.i18n ? window.i18n.get('no-summary') : '暂无摘要';
+                        const downloadTxtText = window.i18n ? window.i18n.get('download-txt') : 'TXT';
+                        const downloadAudioText = window.i18n ? window.i18n.get('download-audio') : 'WAV';
+                        const deleteTaskText = window.i18n ? window.i18n.get('delete-task') : '删除任务';
+                        
                         item.innerHTML = `
                             <div>
-                                <div class="file-name">${task.file_name || '未知文件'}</div>
-                                <div class="file-summary">暂无摘要 <span class="badge bg-light text-dark ms-1">${task.language || ''}</span></div>
+                                <div class="file-name">${task.file_name || (window.i18n ? window.i18n.get('unknown-file') : '未知文件')}</div>
+                                <div class="file-summary">${noSummaryText} <span class="badge bg-light text-dark ms-1">${task.language || ''}</span></div>
                             </div>
                             <div class="file-time">${formatDate(task.created_at)}</div>
                             <div class="file-duration">${formatDuration(task.original_duration)}</div>
                             <div class="file-actions">
-                                ${task.status === 'completed' ? `<button class="btn btn-sm btn-outline-secondary download-txt-btn" title="下载TXT"><i class="fas fa-download"></i> TXT</button>` : ''}
-                                ${(task.status === 'completed' && task.processed_audio_file) ? `<button class="btn btn-sm btn-outline-info download-audio-btn" title="下载音频"><i class="fas fa-file-audio"></i> WAV</button>` : ''}
-                                <button class="btn btn-sm btn-outline-danger delete-task-btn" title="删除任务"><i class="fas fa-trash"></i></button>
+                                ${task.status === 'completed' ? `<button class="btn btn-sm btn-outline-secondary download-txt-btn" title="${downloadTxtText}"><i class="fas fa-download"></i> ${downloadTxtText}</button>` : ''}
+                                ${(task.status === 'completed' && task.processed_audio_file) ? `<button class="btn btn-sm btn-outline-info download-audio-btn" title="${downloadAudioText}"><i class="fas fa-file-audio"></i> ${downloadAudioText}</button>` : ''}
+                                <button class="btn btn-sm btn-outline-danger delete-task-btn" title="${deleteTaskText}"><i class="fas fa-trash"></i></button>
                             </div>
                             <div class="status-icon ${statusIconColorClass}"><i class="${statusIconClass}"></i></div>
                         `;
+                        
                         item.querySelector('.file-name').addEventListener('click', () => displayTaskDetails(task));
                         
                         if(task.status === 'completed'){
@@ -960,7 +1007,7 @@
                             });
 
                             const downloadAudioBtn = item.querySelector('.download-audio-btn');
-                            if(downloadAudioBtn && task.processed_audio_file) { // Ensure processed_audio_file exists
+                            if(downloadAudioBtn && task.processed_audio_file) {
                                 downloadAudioBtn.addEventListener('click', (e) => {
                                     e.stopPropagation();
                                     downloadProcessedAudioFile(task.processed_audio_file, task.file_name);
@@ -1007,9 +1054,14 @@
                 function showTaskCompleted(resultText, fileName, fileType, duration) {
                     detailsContainer.style.display = 'block';
                     taskInfoBox.style.display = 'block';
-                    taskStatusEl.textContent = '识别完成!';
-                    taskIdDisplayEl.textContent = `任务ID: ${currentTaskId}`;
-                    fileInfoDisplayEl.innerHTML = `文件: ${fileName} (${formatDuration(duration)}) <span class="badge bg-secondary file-type-badge">${fileType === 'video' ? '视频' : '音频'}</span>`;
+                    taskStatusEl.textContent = window.i18n ? window.i18n.get('recognition-completed') : '识别完成!';
+                    taskIdDisplayEl.textContent = `${window.i18n ? window.i18n.get('task-id') : '任务ID'}: ${currentTaskId}`;
+                    
+                    const fileTypeText = fileType === 'video' ? 
+                        (window.i18n ? window.i18n.get('video') : '视频') : 
+                        (window.i18n ? window.i18n.get('audio') : '音频');
+                    
+                    fileInfoDisplayEl.innerHTML = `${window.i18n ? window.i18n.get('file') : '文件'}: ${fileName} (${formatDuration(duration)}) <span class="badge bg-secondary file-type-badge">${fileTypeText}</span>`;
                     progressBarEl.style.width = '100%';
                     progressBarEl.setAttribute('aria-valuenow', 100);
                     resultEl.textContent = resultText || "没有识别结果。";
@@ -1033,11 +1085,12 @@
 
                 function hideTaskInfoBox(){
                     taskInfoBox.style.display = 'none';
-                    resultEl.textContent = '点击文件列表中的任务查看结果或进度';
+                    const clickToViewText = window.i18n ? window.i18n.get('click-to-view') : '点击文件列表中的任务查看结果或进度';
+                    resultEl.textContent = clickToViewText;
                     if(statusCheckInterval) clearInterval(statusCheckInterval);
                     currentTaskId = null;
                     // If task info is dismissed, and result is placeholder, hide details container
-                    if (resultEl.textContent === '点击文件列表中的任务查看结果或进度') {
+                    if (resultEl.textContent === clickToViewText) {
                         detailsContainer.style.display = 'none';
                     }
                 }
@@ -1140,20 +1193,25 @@
                 }
 
                 function showDeleteConfirmation(delTaskId, fileName) {
+                    const confirmDeleteTitle = window.i18n ? window.i18n.get('confirm-delete') : '确认删除';
+                    const confirmDeleteMessage = window.i18n ? window.i18n.get('confirm-delete-message', fileName) : `确定要删除任务 "${fileName}" 吗？此操作不可撤销。`;
+                    const cancelText = window.i18n ? window.i18n.get('cancel') : '取消';
+                    const deleteText = window.i18n ? window.i18n.get('delete') : '删除';
+                    
                     let modalHTML = `
                     <div class="modal fade" id="deleteConfirmModal" tabindex="-1">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title">确认删除</h5>
+                                    <h5 class="modal-title">${confirmDeleteTitle}</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p>确定要删除任务 "${fileName}" 吗？此操作不可撤销。</p>
+                                    <p>${confirmDeleteMessage}</p>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                    <button type="button" class="btn btn-danger" id="confirmDeleteBtnModal">删除</button>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${cancelText}</button>
+                                    <button type="button" class="btn btn-danger" id="confirmDeleteBtnModal">${deleteText}</button>
                                 </div>
                             </div>
                         </div>
@@ -1325,12 +1383,13 @@
 
                 // 清除临时文件的函数
                 function cleanAllTempFiles() {
-                    if (!confirm('确定要清除所有临时文件和上传文件吗？此操作不会影响已完成的转写记录。')) {
+                    if (!confirm(window.i18n ? window.i18n.get('confirm-clean') : '确定要清除所有临时文件和上传文件吗？此操作不会影响已完成的转写记录。')) {
                         return;
                     }
                     
                     cleanFilesBtnModal.disabled = true;
-                    cleanFilesBtnModal.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 清理中...';
+                    const cleaningText = window.i18n ? window.i18n.get('cleaning') : '清理中...';
+                    cleanFilesBtnModal.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ${cleaningText}`;
                     
                     fetch('/api/clean-files', {
                         method: 'POST',
@@ -1349,7 +1408,7 @@
                     })
                     .finally(() => {
                         cleanFilesBtnModal.disabled = false;
-                        cleanFilesBtnModal.innerHTML = '清除临时文件';
+                        cleanFilesBtnModal.innerHTML = window.i18n ? window.i18n.get('clean-temp') : '清除临时文件';
                     });
                 }
 

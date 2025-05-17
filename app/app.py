@@ -19,7 +19,7 @@ import glob
 from celery_config import celery  # 直接使用celery_config中的celery实例
 from tasks import transcribe_audio, get_audio_duration
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 CORS(app)  # 添加CORS支持，允许跨域请求
 
 # 连接Redis
