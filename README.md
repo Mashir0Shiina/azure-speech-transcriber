@@ -1,6 +1,7 @@
 # 语音/视频转文字工具
 
 这是一个基于Docker的网页版语音/视频转文字工具，使用Azure的语音识别API进行转换。
+
 由Cursor+Claude-3.7-sonnet+gemini-2.5-pro完成开发
 
 
